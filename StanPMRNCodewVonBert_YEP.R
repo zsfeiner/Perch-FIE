@@ -3,25 +3,44 @@ library(coda)
 
 #Read Data
 female_yep <- read.csv("~/Research/LMYEP_Genetics/Perch-FIE/female_yep.csv",
-                       colClasses=c("integer","integer","integer","character","character","integer"))
-male_yep <- read.csv("~/Research/LMYEP_Genetics/Perch-FIE/male_yep.csv")
+                       colClasses=c("integer","character","integer","integer","character","character","integer","integer","integer","integer"))
+#male_yep <- read.csv("~/Research/LMYEP_Genetics/Perch-FIE/male_yep.csv")
 
 #assign cohort year
 female_yep$CohortYear=female_yep$YEAR-female_yep$AGE
-male_yep$CohortYear=male_yep$YEAR-male_yep$AGE
+#male_yep$CohortYear=male_yep$YEAR-male_yep$AGE
 
 #assign cohort number
 female_yep$Cohort = female_yep$CohortYear - min(female_yep$CohortYear) +1
-male_yep$Cohort = male_yep$CohortYear - min(male_yep$CohortYear) +1
+#male_yep$Cohort = male_yep$CohortYear - min(male_yep$CohortYear) +1
 
 female_meanTL = mean(female_yep$LENGTH)
-male_meanTL = mean(male_yep$LENGTH)
+#male_meanTL = mean(male_yep$LENGTH)
 
 female_SDTL = sd(female_yep$LENGTH)
-male_SDTL = sd(male_yep$LENGTH)
+#male_SDTL = sd(male_yep$LENGTH)
 
 plot(female_yep$LENGTH~female_yep$AGE)
-plot(male_yep$LENGTH~male_yep$AGE)
+#plot(male_yep$LENGTH~male_yep$AGE)
+
+
+#Length/Weight
+#Slow way of getting missing weight, only 6 NA's so it doesn't take too long
+for (x in 1:nrow(female_yep)){
+  if (is.na(female_yep$WEIGHT[x])==TRUE){
+    subsetdata=subset(female_yep,female_yep$YEAR==female_yep$YEAR[x])
+    lm1=lm(log10(subsetdata$WEIGHT)~log10(subsetdata$LENGTH))
+    female_yep$WEIGHT[x] = 10^(coef(lm1)[1] + coef(lm1)[2]* log10(female_yep$LENGTH[x]) )
+    }
+}
+plot(female_yep$WEIGHT~female_yep$LENGTH)
+
+#Confirm no NA's
+table(is.na(female_yep$WEIGHT))
+
+#Add relative weight column
+female_yep$Ws <- 10^(-5.386 + 3.230 * log10(female_yep$LENGTH))
+female_yep$Wr = female_yep$WEIGHT / female_yep$Ws * 100
 
 #Female YEP
 N = nrow(female_yep)
@@ -31,35 +50,41 @@ Age <- (female_yep$AGE)
 TL.mm <- female_yep$LENGTH
 mean_TL <- mean(female_yep$LENGTH)
 sd_TL <- sd(female_yep$LENGTH)
+RW <- female_yep$Wr
+mean_RW <- mean(female_yep$Wr)
+sd_RW <- sd(female_yep$Wr)
 Cohort <- female_yep$Cohort
 nCohorts <- length(unique(female_yep$Cohort))
-X <- cbind(Age,TL.mm)
+X <- cbind(Age,TL.mm,RW)
 K <- ncol(X)
 Mat <- ifelse(female_yep$MAT=="I",0,1)
 
+
 #Create datalist
-dat <- list('N'=nrow(female_yep), 'K'=K, 'Mat'=Mat, 'Age'=Age, 'TL'=TL.mm, 'Cohort'=Cohort, 'nCohorts'=nCohorts, 'mean_TL'=mean_TL, 'sd_TL'=sd_TL)
+dat <- list('N'=nrow(female_yep), 'K'=K, 'Mat'=Mat, 'Age'=Age, 'TL'=TL.mm, 
+            'Cohort'=Cohort, 'nCohorts'=nCohorts, 'mean_TL'=mean_TL, 'sd_TL'=sd_TL,
+            'RW'=RW, 'mean_RW'=mean_RW, 'sd_RW'=sd_RW)
 
 
 inits <- function() {
-  beta <- c(rnorm(1,-3,0.05),rnorm(1,1,0.05),rnorm(1,2,0.05),rnorm(1,0,0.05))
-  sigma_u <- c(runif(1,1,5),runif(1,0.1,1),runif(1,0.5,2),runif(1,0.1,1))
+  beta <- c(rnorm(1,-3,0.05),rnorm(1,1,0.05),rnorm(1,2,0.05),rnorm(1,0,0.05),rnorm(1,0,0.05),rnorm(1,0,0.05))
+  sigma_u <- c(runif(1,1,5),runif(1,0.1,1),runif(1,0.5,2),runif(1,0.1,1),runif(1,0.1,1),runif(1,0.1,1))
   phi_mu <- rnorm(1,200,0.05)
   phi_sigma <- runif(1,0.5,1)
   gamma_mu <- rnorm(1,40,0.05)
   gamma_sigma <- runif(1,0.5,2)
   sigma <- runif(1,1,10)
-  z_u <- matrix(rnorm(4*nCohorts,0,0.5),nrow=4,ncol=nCohorts)
+  z_u <- matrix(rnorm(6*nCohorts,0,0.5),nrow=6,ncol=nCohorts)
   init <- list("beta"=beta, "sigma_u"=sigma_u, "phi_mu"=phi_mu, "phi_sigma"=phi_sigma, "gamma_mu"=gamma_mu, "gamma_sigma"=gamma_sigma, "sigma"=sigma, "z_u"=z_u)
   return(init)
   }
 
 
-stanmatcode = stan_model(file = 'yep_fie.stan')
+stanmatcode = stan_model(file = 'yep_fie_covar.stan')
 fit = sampling(stanmatcode, data=dat, init=inits, 
            iter=4000, warmup=2000, thin=1, chains=3, cores=3, 
            control=list(adapt_delta=0.80,max_treedepth=10) )
-saveRDS(fit,"YEPFIE.RDS")
+saveRDS(fit,"YEPFIE_covar.RDS")
 
 print(fit, pars=c('beta','sigma_u','phi_mu','gamma_mu','sigma'), digits=3, prob=c(0.025,0.5,0.975))
 print(fit, pars=c('m'), digits=3, prob=c(0.025,0.5,0.975))
@@ -68,6 +93,10 @@ stan_trace(fit,pars=c('m[100]','m[200]','m[300]','m[400]','m[500]','m[600]'))
 stan_trace(fit,pars=c('beta','gamma_mu','phi_mu'))
 stan_trace(fit,pars=c('L_u'))
 pairs(fit,pars=c('beta','gamma_mu','phi_mu'))
+
+print(fit,pars=c('p[1251]','prev_p[1251]'))
+print(fit,pars=c('m[1251]'))
+
 
 #plot(female_yep$TL.mm[female_yep$Cohort==9],female_yep$Mat[female_yep$Cohort==9],col=female_yep$Age[female_yep$Cohort==9])
 ## Use the L matrices to compute the correlation matrices
@@ -335,8 +364,12 @@ sub.Lp50
 plot(0,0,ylim=c(100,400),xlim=c(2.5,5.5))
 for (i in 1:48) {
   points(sub.Lp50$Age[sub.Lp50$Cohort==i], sub.Lp50$Median[sub.Lp50$Cohort==i],col=i,type="b",pch=20,cex=2)
+  
   #lines(x=rep(sub.Lp50$Age[sub.Lp50$Cohort==i],2),y=c(sub.Lp50$CI2.5[sub.Lp50$Cohort==i],sub.Lp50$CI97.5[sub.Lp50$Cohort==i]),col=i)
 }
+
+ggplot(data=sub.Lp50,aes(x=Age,y=Median,group=as.factor(Year)))+
+        geom_line(aes(color=as.factor(Year),size=1.10))
 
 par(mfrow=c(1,3))
 plot(Median ~ Year, data=sub.Lp50[sub.Lp50$Age==3,],type="b",col=1,pch=20,ylim=c(100,400),xlim=c(1979,2015),main="Age 3",cex=2,lwd=2,ylab="Median Lp50")
