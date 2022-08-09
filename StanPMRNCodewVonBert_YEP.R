@@ -2,9 +2,12 @@ library(rstan)
 library(coda)
 
 #Read Data
-female_yep <- read.csv("~/Research/LMYEP_Genetics/Perch-FIE/female_yep.csv",
-                       colClasses=c("integer","character","integer","integer","character","character","integer","integer","integer","integer"))
+#female_yep <- read.csv("~/Research/LMYEP_Genetics/Perch-FIE/female_yep.csv",
+#                       colClasses=c("integer","character","integer","integer","character","character","integer","integer","integer","integer"))
 #male_yep <- read.csv("~/Research/LMYEP_Genetics/Perch-FIE/male_yep.csv")
+
+female_yep <- read.csv(paste0(getwd(), "/female_yep.csv"), 
+                       colClasses=c("integer","character","integer","integer","character","character","integer","integer","integer","integer"))
 
 #assign cohort year
 female_yep$CohortYear=female_yep$YEAR-female_yep$AGE
@@ -496,7 +499,4 @@ summary(lm(Median ~ Year, data=sub.Lp50.all[sub.Lp50.all$Age==5,]))
 
 save.image("InitialPMRNrun_1.7.2019.Rdata")
 
-
-
-
-
+  
