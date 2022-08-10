@@ -41,3 +41,5 @@ plot(GDD5Summ ~ Year, data=other.index)
 #Combine
 temps.summary <- left_join(other.index, winter.index, by=c("Year"="WinterYear"))
 temps.summary
+
+write.csv(temps.summary, "StJoeTempSummary.csv", row.names=F)
