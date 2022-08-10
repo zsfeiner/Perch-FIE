@@ -1,3 +1,6 @@
+###This is messy- pulling in several different sources of water temp data to get to
+#a continuous timeseries
+
 setwd(paste0(getwd(),"/45007hTemps_1981.2021"))
 library(tidyverse)
 library(readr)
