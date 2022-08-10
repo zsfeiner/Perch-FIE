@@ -132,6 +132,44 @@ plot(Temp ~ Year, data=sumtemp)
 plot(Temp ~ Date, data=StJoeTemp, type="l")
 
 
+#Data from Patrick
+pat <- read_excel("~/External Projects/Lake Michigan YEP FIE/Perch-FIE/StJoeTemps/SJWWWaterTemp.xls",
+                  sheet=7)
+
+names(pat) <- make.names(names(pat))
+pat$Date <- as.Date(pat$Date)
+
+
+StJoeTemp
+
+alltemps <- full_join(StJoeTemp, pat, by=c("Date"="Date", "Day"="day", "Month"="month", "Year"="year"))
+alltemps <- alltemps[order(alltemps$Date), ]
+alltemps <- unique(alltemps) %>%
+  filter(!is.na(Date))
+
+print(filter(alltemps, Year==1980), n=Inf) #Many Aug 8
+print(filter(alltemps, Year==2000), n=Inf) #two Oct 23
+
+#Remove duplicates and just use first value
+alltemps <- alltemps[!duplicated(alltemps$Date),]
+table(alltemps$Year)
+
+#When overlap, use data from NOAA, otherwise use Patrick's
+alltemps <- alltemps %>%
+  mutate(TempC = ifelse(!is.na(Temp), Temp, Temp..C))
+alltemps
+
+cal <- tibble(Date=seq(from=as.Date(min(alltemps$Date)), to=as.Date(max(alltemps$Date)), by=1))
+
+temps <- left_join(cal, alltemps, by="Date") %>%
+  mutate(Month=month(Date), Day=day(Date), Year=year(Date)) %>%
+  mutate(missing=ifelse(is.na(TempC), T, F)) %>%
+  mutate(TempC = zoo::na.approx(TempC)) %>%
+  select(Date, Month, Day, Year, TempC, missing) %>%
+  filter(Year >= 1960)
+
+write.csv(temps, "StJoeTemps_1960_2018.csv", row.names=F)
+
 ##Graveyard - compare nearshore buoy to offshore buoy
 nearfiles <- list.files("C:/Users/feinezs/Documents/LakeMichTemp/45026hTemps_2011.2021")
 nearfiles
