@@ -110,7 +110,7 @@ generated quantities {
     prev_p[i] = inv_logit((beta[1] + u[1,Cohort[i]]) + 
     (beta[2] + u[2,Cohort[i]]) * (Age[i] - 1) +
     (beta[3] + u[3,Cohort[i]]) * s[i] +
-    (beta[4] + u[4,Cohort[i]]) * sc_RW[i] +               //Do we assume relative weight was the same last year?
+    (beta[4] + u[4,Cohort[i]]) * sc_RW[i] +               //Do we assume relative weight was the same last year? ZF - yeesh, I guess?
     (beta[5] + u[5,Cohort[i]]) * (Age[i] - 1) * s[i] +
     (beta[6] + u[6,Cohort[i]]) * (Age[i] - 1) * sc_RW[i]);
     
