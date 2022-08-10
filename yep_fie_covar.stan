@@ -5,6 +5,8 @@ data {
   vector[N] Age;   //Age, explanatory variable
   vector[N] TL;    //Length, response variable
   vector[N] RW;   //relative weight
+  vector[N] TP;   //total phosphorus
+  vector[N] GDD5; //annual GDD5
   int<lower=1> nCohorts;   //Number of cohorts
   int<lower=1,upper=nCohorts> Cohort[N];  //Cohort ID
   int<lower=0,upper=1> Mat[N];   // Maturation status
@@ -12,14 +14,22 @@ data {
   real<lower=0> sd_TL;  //sd total length for scaling
   real mean_RW;   //mean relative weight for scaling
   real<lower=0> sd_RW;  //sd relative weith for scaling
+  real mean_TP;    //mean TP for scaling
+  real<lower=0> sd_TP;  //sd TP for scaling
+  real mean_GDD5;   //mean GDD5 for scaling
+  real<lower=0> sd_GDD5;  //sd GDD5 for scaling
 }
 
 
 transformed data {
   vector[N] sc_TL;
   vector[N] sc_RW;
+  vector[N] sc_TP;
+  vector[N] sc_GDD5;
   sc_TL = (TL - mean_TL)/sd_TL;
   sc_RW = (RW - mean_RW)/sd_RW;
+  sc_TP = (TP - mean_TP)/sd_TP;
+  sc_GDD5 = (GDD5 - mean_GDD5)/sd_GDD5;
 }
 
 
@@ -75,9 +85,10 @@ model {
     (beta[2] + u[2,Cohort[i]]) * Age[i] +
     (beta[3] + u[3,Cohort[i]]) * sc_TL[i] +
     (beta[4] + u[4,Cohort[i]]) * sc_RW[i] +    // relative weight add elsewhere
-    //(beta[7] + u[6,Cohort[i]]) * temp[i]     //add temp   
     (beta[5] + u[5,Cohort[i]]) * Age[i] * sc_TL[i] + 
-    (beta[6] + u[6,Cohort[i]]) * Age[i] * sc_RW[i];  //new line add elsewhere
+    (beta[6] + u[6,Cohort[i]]) * Age[i] * sc_RW[i] + //new line add elsewhere
+    (beta[7] + u[7,Cohort[i]]) * sc_TP[i] +      //add TP
+    (beta[8] + u[8,Cohort[i]]) * sc_GDD5[i];  //add annual GDD5 - need to have interaction with age?  I think no?
  
     //Growth
     y[i] = phi[Cohort[i]] + gamma[Cohort[i]] * Age[i];
@@ -105,14 +116,18 @@ generated quantities {
     (beta[3] + u[3,Cohort[i]]) * sc_TL[i] +
     (beta[4] + u[4,Cohort[i]]) * sc_RW[i] + 
     (beta[5] + u[5,Cohort[i]]) * Age[i] * sc_TL[i] +
-    (beta[6] + u[6,Cohort[i]]) * Age[i] * sc_RW[i]);
+    (beta[6] + u[6,Cohort[i]]) * Age[i] * sc_RW[i] +
+    (beta[7] + u[7,Cohort[i]]) * sc_TP[i] +
+    (beta[8] + u[8,Cohort[i]]) * sc_GDD5[i]);
     
     prev_p[i] = inv_logit((beta[1] + u[1,Cohort[i]]) + 
     (beta[2] + u[2,Cohort[i]]) * (Age[i] - 1) +
     (beta[3] + u[3,Cohort[i]]) * s[i] +
     (beta[4] + u[4,Cohort[i]]) * sc_RW[i] +               //Do we assume relative weight was the same last year? ZF - yeesh, I guess?
     (beta[5] + u[5,Cohort[i]]) * (Age[i] - 1) * s[i] +
-    (beta[6] + u[6,Cohort[i]]) * (Age[i] - 1) * sc_RW[i]);
+    (beta[6] + u[6,Cohort[i]]) * (Age[i] - 1) * sc_RW[i] +
+    (beta[7] + u[7,Cohort[i]]) * sc_TP[i] +
+    (beta[8] + u[8,Cohort[i]]) * sc_GDD5[i]);
     
     m[i] = (p[i] - prev_p[i]) / (1 - prev_p[i] + 0.00001); //add small offset, prevents division by 0
   

@@ -6,7 +6,7 @@ library(coda)
 #                       colClasses=c("integer","character","integer","integer","character","character","integer","integer","integer","integer"))
 #male_yep <- read.csv("~/Research/LMYEP_Genetics/Perch-FIE/male_yep.csv")
 
-female_yep <- read.csv(paste0(getwd(), "/female_yep.csv"), 
+female_yep <- read.csv("female_yep.csv", 
                        colClasses=c("integer","character","integer","integer","character","character","integer","integer","integer","integer"))
 
 #assign cohort year
@@ -45,6 +45,28 @@ table(is.na(female_yep$WEIGHT))
 female_yep$Ws <- 10^(-5.386 + 3.230 * log10(female_yep$LENGTH))
 female_yep$Wr = female_yep$WEIGHT / female_yep$Ws * 100
 
+#Add environmental variables - use mean TP and annual GDD5
+mean_TP
+temps.summary
+
+female_yep <- left_join(female_yep, select(mean_TP, YEAR, Mean), by=c("CohortYear"="YEAR")) %>%
+  left_join(select(temps.summary, Year, GDD5Annual), by=c("CohortYear"="Year")) %>%
+  rename("mean_TP"="Mean", "GDD5"="GDD5Annual")
+female_yep
+
+######FOR NOW FILTER TO ENVIRONMENTAL DATA######
+female_yep <- filter(female_yep, !is.na(mean_TP), !is.na(GDD5))
+female_yep
+
+#######Reassign cohorts#####
+#assign cohort year
+female_yep$CohortYear=female_yep$YEAR-female_yep$AGE
+
+#assign cohort number
+female_yep$Cohort = female_yep$CohortYear - min(female_yep$CohortYear) +1
+#########################
+
+
 #Female YEP
 N = nrow(female_yep)
 
@@ -56,9 +78,15 @@ sd_TL <- sd(female_yep$LENGTH)
 RW <- female_yep$Wr
 mean_RW <- mean(female_yep$Wr)
 sd_RW <- sd(female_yep$Wr)
+TP <- female_yep$mean_TP
+mean_TP <- mean(female_yep$mean_TP)
+sd_TP <- sd(female_yep$mean_TP)
+GDD5 <- female_yep$GDD5
+mean_GDD5 <- mean(female_yep$GDD5)
+sd_GDD5 <- sd(female_yep$GDD5)
 Cohort <- female_yep$Cohort
 nCohorts <- length(unique(female_yep$Cohort))
-X <- cbind(Age,TL.mm,RW)
+X <- cbind(Age,TL.mm,RW,TP,GDD5)
 K <- ncol(X)
 Mat <- ifelse(female_yep$MAT=="I",0,1)
 
@@ -66,18 +94,20 @@ Mat <- ifelse(female_yep$MAT=="I",0,1)
 #Create datalist
 dat <- list('N'=nrow(female_yep), 'K'=K, 'Mat'=Mat, 'Age'=Age, 'TL'=TL.mm, 
             'Cohort'=Cohort, 'nCohorts'=nCohorts, 'mean_TL'=mean_TL, 'sd_TL'=sd_TL,
-            'RW'=RW, 'mean_RW'=mean_RW, 'sd_RW'=sd_RW)
+            'RW'=RW, 'mean_RW'=mean_RW, 'sd_RW'=sd_RW,
+            'TP'=TP, 'mean_TP'=mean_TP, 'sd_TP'=sd_TP,
+            'GDD5'=GDD5, 'mean_GDD5'=mean_GDD5, 'sd_GDD5'=sd_GDD5)
 
 
 inits <- function() {
-  beta <- c(rnorm(1,-3,0.05),rnorm(1,1,0.05),rnorm(1,2,0.05),rnorm(1,0,0.05),rnorm(1,0,0.05),rnorm(1,0,0.05))
-  sigma_u <- c(runif(1,1,5),runif(1,0.1,1),runif(1,0.5,2),runif(1,0.1,1),runif(1,0.1,1),runif(1,0.1,1))
+  beta <- c(rnorm(1,-3,0.05),rnorm(1,1,0.05),rnorm(1,2,0.05),rnorm(1,0,0.05),rnorm(1,0,0.05),rnorm(1,0,0.05),rnorm(1,0,0.05),rnorm(1,0,0.05))
+  sigma_u <- c(runif(1,1,5),runif(1,0.1,1),runif(1,0.5,2),runif(1,0.1,1),runif(1,0.1,1),runif(1,0.1,1),runif(1,0.1,1),runif(1,0.1,1))
   phi_mu <- rnorm(1,200,0.05)
   phi_sigma <- runif(1,0.5,1)
   gamma_mu <- rnorm(1,40,0.05)
   gamma_sigma <- runif(1,0.5,2)
   sigma <- runif(1,1,10)
-  z_u <- matrix(rnorm(6*nCohorts,0,0.5),nrow=6,ncol=nCohorts)
+  z_u <- matrix(rnorm(8*nCohorts,0,0.5),nrow=8,ncol=nCohorts)
   init <- list("beta"=beta, "sigma_u"=sigma_u, "phi_mu"=phi_mu, "phi_sigma"=phi_sigma, "gamma_mu"=gamma_mu, "gamma_sigma"=gamma_sigma, "sigma"=sigma, "z_u"=z_u)
   return(init)
   }
