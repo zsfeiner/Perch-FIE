@@ -115,7 +115,7 @@ inits <- function() {
 
 stanmatcode = stan_model(file = 'yep_fie_covar.stan')
 fit = sampling(stanmatcode, data=dat, init=inits, 
-           iter=1000, warmup=500, thin=1, chains=2, cores=2, #was 4000 and 2000
+           iter=4000, warmup=2000, thin=1, chains=3, cores=3, #was 4000 and 2000
            control=list(adapt_delta=0.80,max_treedepth=10) )
 saveRDS(fit,"YEPFIE_covar_enviro.RDS")
 
@@ -147,46 +147,20 @@ m
 w <- cbind(m[1,],TL.mm,Age, Cohort)
 table(w[w[,1]<0,4])
 
-plot(female_yep$LENGTH[female_yep$Cohort==2],female_yep$Mat[female_yep$Cohort==2],col=female_yep$AGE[female_yep$Cohort==2])
-plot(female_yep$LENGTH[female_yep$Cohort==5],female_yep$Mat[female_yep$Cohort==5],col=female_yep$AGE[female_yep$Cohort==5])
-plot(female_yep$LENGTH[female_yep$Cohort==7],female_yep$Mat[female_yep$Cohort==7],col=female_yep$AGE[female_yep$Cohort==7])
-plot(female_yep$LENGTH[female_yep$Cohort==10],female_yep$Mat[female_yep$Cohort==10],col=female_yep$AGE[female_yep$Cohort==10])
-plot(female_yep$LENGTH[female_yep$Cohort==12],female_yep$Mat[female_yep$Cohort==12],col=female_yep$AGE[female_yep$Cohort==12])
-plot(female_yep$LENGTH[female_yep$Cohort==14],female_yep$Mat[female_yep$Cohort==14],col=female_yep$AGE[female_yep$Cohort==14])
-plot(female_yep$LENGTH[female_yep$Cohort==20],female_yep$Mat[female_yep$Cohort==20],col=female_yep$AGE[female_yep$Cohort==20])
-plot(female_yep$LENGTH[female_yep$Cohort==22],female_yep$Mat[female_yep$Cohort==22],col=female_yep$AGE[female_yep$Cohort==22])
-plot(female_yep$LENGTH[female_yep$Cohort==25],female_yep$Mat[female_yep$Cohort==25],col=female_yep$AGE[female_yep$Cohort==25])
+#Plot maturation data for cohorts with negative maturation probability
+#In some cohorts very large fish have negative maturation probabilities - senescence, mis-ID of spent fish?
+ggplot(filter(female_yep, Cohort %in% c(7,19,20,21,22,23,24,25)), aes(x=LENGTH, y=MAT, color=as.factor(AGE), group=as.factor(AGE))) + 
+         geom_point() + 
+         facet_wrap(~Cohort, scales="free")
 
-plot(w[w[,4]==6 & w[,3]==4,1] ~ w[w[,4]==6 & w[,3]==4,2],col=w[w[,4]==6 & w[,3]==4,3])
-points(spline(x=w[w[,4]==6 & w[,3]==4,2], y=w[w[,4]==6 & w[,3]==4,1]))
+w <- as_tibble(w)
+names(w) <- c("m", "TL.mm","Age","Cohort")
+ggplot(filter(w, Cohort %in% c(7,19,20,21,22,23,24,25)), aes(x=TL.mm, y=m, group=as.factor(Age), color=as.factor(Age))) + 
+  geom_point() + facet_wrap(~Cohort, scales='free')
 
-spline(y=w[w[,4]==6 & w[,3]==4,2], x=w[w[,4]==6 & w[,3]==4,1], xout=0.5)
-palette(c("black","red","green","blue","gray","magenta","orange","purple"))
-plot(w[w[,4]==2,1] ~ w[w[,4]==2,2],col=w[w[,4]==2,3])
-plot(w[w[,4]==5,1] ~ w[w[,4]==5,2],col=w[w[,4]==5,3])
-plot(w[w[,4]==7,1] ~ w[w[,4]==7,2],col=w[w[,4]==7,3])
-plot(w[w[,4]==10,1] ~ w[w[,4]==10,2],col=w[w[,4]==10,3])
-plot(w[w[,4]==12,1] ~ w[w[,4]==12,2],col=w[w[,4]==12,3])
-plot(w[w[,4]==14,1] ~ w[w[,4]==14,2],col=w[w[,4]==14,3])
-plot(w[w[,4]==20,1] ~ w[w[,4]==20,2],col=w[w[,4]==20,3])
-plot(w[w[,4]==22,1] ~ w[w[,4]==22,2],col=w[w[,4]==22,3])
-plot(w[w[,4]==25,1] ~ w[w[,4]==25,2],col=w[w[,4]==25,3])
-
-
-plot(w[w[,3]==3,1] ~ w[w[,3]==3,2],col=w[w[,3]==3,4],ylim=c(0,1))
-plot(w[w[,3]==4,1] ~ w[w[,3]==4,2],col=w[w[,3]==4,4])
-plot(w[w[,3]==5,1] ~ w[w[,3]==5,2],col=w[w[,3]==5,4])
-plot(w[w[,3]==6,1] ~ w[w[,3]==6,2],col=w[w[,3]==6,4])
-plot(w[w[,3]==7,1] ~ w[w[,3]==7,2],col=w[w[,3]==7,4])
-table(data$BinCohort, data$Age)
 
 #Use spline interpolation to determine PMRN midpoints for ages 3-5 (older ages declining in m, already mature)
-head(w)
-w <- as.data.frame(w)
-head(w)
-names(w) <- c('m','TL.mm','Age','Cohort')
-head(w)
-
+w
 nAges <- length(unique(w$Age[w$Age %in% c(3:5)]))
 nCohorts <- length(unique(w$Cohort[w$Age %in% c(3:5)]))
 nReps <- dim(m)[1]
@@ -215,6 +189,8 @@ Lp50.all<- array(0, dim = c(nAges,nCohorts,nReps))
 dim(Lp50.all)
 
 #Determine slope to make sure positive
+####First option - Across all replicates, cohorts, and ages use spline interpolation to determine Lp50, Lp25, and Lp75
+###Lp50.all extrapolates midpoint, while Lp50 only uses individuals with maturation prob that crosses 50%
 for (k in 1:nReps) {
       
   d <- as.data.frame(cbind(m[k,],TL.mm,Age,Cohort))
@@ -258,7 +234,7 @@ for (k in 1:nReps) {
 }
 
 
-#Use logistic regression
+######Second option - Use logistic regression
 for (k in 1:nReps) {
   
   d <- as.data.frame(cbind(m[k,],TL.mm,Age,Cohort))
@@ -366,6 +342,7 @@ PMRNs.Lp75
 PMRNs.Lp25
 PMRNs.Lp50.all
 
+#Filter out unrealistic or uncertain estimates with too many NAs
 PMRNs.Lp50 <- as.data.frame(PMRNs.Lp50)
 sub.Lp50 <- subset(PMRNs.Lp50, NAs < 250 & CI2.5 >= -100 & CI97.5 <= 2000)
 sub.Lp50
@@ -401,8 +378,10 @@ for (i in 1:48) {
   #lines(x=rep(sub.Lp50$Age[sub.Lp50$Cohort==i],2),y=c(sub.Lp50$CI2.5[sub.Lp50$Cohort==i],sub.Lp50$CI97.5[sub.Lp50$Cohort==i]),col=i)
 }
 
+
+##Everything past this is just plotting the PMRNs in different ways that can be cleaned up later but works for now
 ggplot(data=sub.Lp50,aes(x=Age,y=Median,group=as.factor(Year)))+
-        geom_line(aes(color=as.factor(Year),size=1.10))
+        geom_line(aes(color=as.factor(Year)),size=1.10) + theme_classic()
 
 par(mfrow=c(1,3))
 plot(Median ~ Year, data=sub.Lp50[sub.Lp50$Age==3,],type="b",col=1,pch=20,ylim=c(100,400),xlim=c(1979,2015),main="Age 3",cex=2,lwd=2,ylab="Median Lp50")
