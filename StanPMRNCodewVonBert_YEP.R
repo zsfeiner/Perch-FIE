@@ -115,9 +115,9 @@ inits <- function() {
 
 stanmatcode = stan_model(file = 'yep_fie_covar.stan')
 fit = sampling(stanmatcode, data=dat, init=inits, 
-           iter=4000, warmup=2000, thin=1, chains=3, cores=3, 
+           iter=1000, warmup=500, thin=1, chains=2, cores=2, #was 4000 and 2000
            control=list(adapt_delta=0.80,max_treedepth=10) )
-saveRDS(fit,"YEPFIE_covar.RDS")
+saveRDS(fit,"YEPFIE_covar_enviro.RDS")
 
 print(fit, pars=c('beta','sigma_u','phi_mu','gamma_mu','sigma'), digits=3, prob=c(0.025,0.5,0.975))
 print(fit, pars=c('m'), digits=3, prob=c(0.025,0.5,0.975))
