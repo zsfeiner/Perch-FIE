@@ -33,13 +33,11 @@ other.index <- temps %>%
             GDD5Summ = sum(TempC[which(Month %in% c(6,7,8))]),
             MeanAnnual = mean(TempC),
             GDD5Annual = sum(GDD5))
-other.index
-plot(GDD5Annual ~ Year, data=other.index)
-plot(GDD5Summ ~ Year, data=other.index)
+
 
 
 #Combine
 temps.summary <- left_join(other.index, winter.index, by=c("Year"="WinterYear"))
 temps.summary
 
-write.csv(temps.summary, "StJoeTempSummary.csv", row.names=F)
+#write.csv(temps.summary, "StJoeTempSummary.csv", row.names=F)
