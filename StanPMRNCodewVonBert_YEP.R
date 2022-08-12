@@ -1,6 +1,11 @@
 library(rstan)
 library(coda)
 
+#Run TP_Data.R to load TP data
+source("TP_Data.R")
+#Run SummarizeWaterTemp.R to load water temp data
+source("SummarizeWaterTemps.R")
+
 #Read Data
 #female_yep <- read.csv("~/Research/LMYEP_Genetics/Perch-FIE/female_yep.csv",
 #                       colClasses=c("integer","character","integer","integer","character","character","integer","integer","integer","integer"))
@@ -116,7 +121,7 @@ inits <- function() {
 stanmatcode = stan_model(file = 'yep_fie_covar.stan')
 fit = sampling(stanmatcode, data=dat, init=inits, 
            iter=4000, warmup=2000, thin=1, chains=3, cores=3, #was 4000 and 2000
-           control=list(adapt_delta=0.80,max_treedepth=10) )
+           control=list(adapt_delta=0.90,max_treedepth=10) )
 saveRDS(fit,"YEPFIE_covar_enviro.RDS")
 
 print(fit, pars=c('beta','sigma_u','phi_mu','gamma_mu','sigma'), digits=3, prob=c(0.025,0.5,0.975))
