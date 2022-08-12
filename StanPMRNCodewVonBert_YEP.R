@@ -146,7 +146,7 @@ print(fit,pars=c('m[1251]'))
 #print(signif(quantile(cor_u, probs = c(0.025, 0.5, 0.975)), 2))
 #print(mean(cor_u))
 
-m <- extract(fit,pars='m')$m
+m <- rstan::extract(fit,pars='m')$m
 m
 
 w <- cbind(m[1,],TL.mm,Age, Cohort)
@@ -239,40 +239,40 @@ for (k in 1:nReps) {
 }
 
 
-######Second option - Use logistic regression
-for (k in 1:nReps) {
-  
-  d <- as.data.frame(cbind(m[k,],TL.mm,Age,Cohort))
-  names(d)[1] <- "m"
-  
-  for (i in 1:nAges) {
-    for (j in 1:nCohorts) {
-      sub.d <- subset(d, Age == Ages[i] & Cohort == Cohorts[j])
-      sub.d$m[sub.d$m<0] <- 0
-      
-      if (nrow(sub.d)<2 | length(unique(sub.d$TL.mm))==1) {
-        Lp50[i,j,k] <- NA
-        Lp75[i,j,k] <- NA
-        Lp25[i,j,k] <- NA
-        Lp50.all[i,j,k] <- NA
-      } else {
-        
-        reg <- suppressWarnings(glm(m ~ TL.mm, family=binomial, data=sub.d))
-        if (coef(reg)[2] < 0) { 
-          Lp50[i,j,k] <- NA
-          Lp75[i,j,k] <- NA 
-          Lp25[i,j,k] <- NA 
-          
-          } else {
-            Lp50[i,j,k] <- -coef(reg)[1]/coef(reg)[2]
-            Lp75[i,j,k] <- (log(1/.75-1) + coef(reg)[1])/-coef(reg)[2]
-            Lp25[i,j,k]  <- (log(1/.25-1) + coef(reg)[1])/-coef(reg)[2]
-            }
-      }
-    }
-  }
-}
-
+# ######Second option - Use logistic regression
+# for (k in 1:nReps) {
+#   
+#   d <- as.data.frame(cbind(m[k,],TL.mm,Age,Cohort))
+#   names(d)[1] <- "m"
+#   
+#   for (i in 1:nAges) {
+#     for (j in 1:nCohorts) {
+#       sub.d <- subset(d, Age == Ages[i] & Cohort == Cohorts[j])
+#       sub.d$m[sub.d$m<0] <- 0
+#       
+#       if (nrow(sub.d)<2 | length(unique(sub.d$TL.mm))==1) {
+#         Lp50[i,j,k] <- NA
+#         Lp75[i,j,k] <- NA
+#         Lp25[i,j,k] <- NA
+#         Lp50.all[i,j,k] <- NA
+#       } else {
+#         
+#         reg <- suppressWarnings(glm(m ~ TL.mm, family=binomial, data=sub.d))
+#         if (coef(reg)[2] < 0) { 
+#           Lp50[i,j,k] <- NA
+#           Lp75[i,j,k] <- NA 
+#           Lp25[i,j,k] <- NA 
+#           
+#           } else {
+#             Lp50[i,j,k] <- -coef(reg)[1]/coef(reg)[2]
+#             Lp75[i,j,k] <- (log(1/.75-1) + coef(reg)[1])/-coef(reg)[2]
+#             Lp25[i,j,k]  <- (log(1/.25-1) + coef(reg)[1])/-coef(reg)[2]
+#             }
+#       }
+#     }
+#   }
+# }
+# 
 
 rowSums(is.na(Lp50[1,,]))
 rowSums(is.na(Lp50[2,,]))
