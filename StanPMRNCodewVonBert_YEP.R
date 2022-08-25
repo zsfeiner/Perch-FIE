@@ -133,7 +133,7 @@ inits <- function() {
 
 stanmatcode = stan_model(file = 'yep_fie_covar_V2.stan')
 fit = sampling(stanmatcode, data=dat, init=inits, 
-           iter=500, warmup=250, thin=1, chains=3, cores=3, #was 4000 and 2000
+           iter=4000, warmup=2000, thin=1, chains=3, cores=3, #was 4000 and 2000
            control=list(adapt_delta=0.90,max_treedepth=10) )
 saveRDS(fit,"YEPFIE_covar_enviro.RDS")
 
@@ -159,7 +159,7 @@ print(fit,pars=c('m[1251]'))
 #print(signif(quantile(cor_u, probs = c(0.025, 0.5, 0.975)), 2))
 #print(mean(cor_u))
 
-m <- extract(fit,pars='m')
+m <- data.frame(rstan::extract(fit,pars='m'))
 m
 
 w <- cbind(m[1,],TL.mm,Age, Cohort)
