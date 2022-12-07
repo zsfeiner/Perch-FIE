@@ -1,7 +1,7 @@
 library(rstan)
 library(coda)
 
-#Run TP_Data.R to load TP data
+#Run TP_Data.R to load TP data - will be ignored in model
 source("TP_Data.R")
 #Run SummarizeWaterTemp.R to load water temp data
 source("SummarizeWaterTemps.R")
@@ -19,7 +19,7 @@ female_yep$CohortYear=female_yep$YEAR-female_yep$AGE
 #male_yep$CohortYear=male_yep$YEAR-male_yep$AGE
 
 #assign cohort number
-female_yep$Cohort = female_yep$CohortYear - min(female_yep$CohortYear) +1
+female_yep$Cohort = female_yep$CohortYear - min(female_yep$CohortYear) + 1
 #male_yep$Cohort = male_yep$CohortYear - min(male_yep$CohortYear) +1
 
 female_meanTL = mean(female_yep$LENGTH)
@@ -54,7 +54,7 @@ female_yep$Wr <- female_yep$WEIGHT / female_yep$Ws * 100
 mean_TP_byYear
 temps.summary
 
-#Combine TP and temp
+#Combine TP, temp
 GDD_byYear <- temps.summary %>%
               select("GDD5Annual","Year") %>%
               filter(Year > 1982 & Year < 2016)
@@ -62,14 +62,21 @@ GDD_byYear <- temps.summary %>%
 TP_byYear <- mean_TP_byYear %>%
             select("Year","Mean") %>%
             filter(Year > 1982 & Year < 2016)
-#Combine abioitic
+
+#Combine abiotics and fishing indicator
 abiotics <- merge(GDD_byYear, TP_byYear, by = 'Year')
 abiotics$CohortYear = abiotics$Year-1982
+abiotics$Fishing = ifelse(abiotics$Year <= 1996, 1, 0)
+abiotics <- select(abiotics, -Mean) #Drop TP
+
 
 female_yep <- left_join(female_yep, select(mean_TP_byYear, Year, Mean), by=c("CohortYear"="Year")) %>%
   left_join(select(temps.summary, Year, GDD5Annual), by=c("CohortYear"="Year")) %>%
   rename("mean_TP"="Mean", "GDD5"="GDD5Annual")
 female_yep
+
+#Add commercial fishing indicator
+female_yep$Fishing = ifelse(female_yep$CohortYear <= 1996, 1, 0)
 
 ######FOR NOW FILTER TO ENVIRONMENTAL DATA######
 female_yep <- filter(female_yep, !is.na(mean_TP), !is.na(GDD5))
@@ -95,15 +102,16 @@ sd_TL <- sd(female_yep$LENGTH)
 RW <- female_yep$Wr
 mean_RW <- mean(female_yep$Wr)
 sd_RW <- sd(female_yep$Wr)
-TP <- female_yep$mean_TP
-mean_TP <- mean(female_yep$mean_TP)
-sd_TP <- sd(female_yep$mean_TP)
+#TP <- female_yep$mean_TP
+#mean_TP <- mean(female_yep$mean_TP)
+#sd_TP <- sd(female_yep$mean_TP)
+Fishing <- female_yep$Fishing
 GDD5 <- female_yep$GDD5
 mean_GDD5 <- mean(female_yep$GDD5)
 sd_GDD5 <- sd(female_yep$GDD5)
 Cohort <- female_yep$Cohort
 nCohorts <- length(unique(female_yep$Cohort))
-X <- cbind(Age,TL.mm,RW,TP,GDD5)
+X <- cbind(Age,TL.mm,RW,Fishing,GDD5)
 K <- ncol(X)
 Mat <- ifelse(female_yep$MAT=="I",0,1)
 
@@ -112,7 +120,7 @@ Mat <- ifelse(female_yep$MAT=="I",0,1)
 dat <- list('N'=nrow(female_yep), 'K'=K, 'Mat'=Mat, 'Age'=Age, 'TL'=TL.mm, 
             'Cohort'=Cohort, 'nCohorts'=nCohorts, 'mean_TL'=mean_TL, 'sd_TL'=sd_TL,
             'RW'=RW, 'mean_RW'=mean_RW, 'sd_RW'=sd_RW,
-            'TP'=TP, 'mean_TP'=mean_TP, 'sd_TP'=sd_TP,
+            'Fishing'=Fishing,
             'GDD5'=GDD5, 'mean_GDD5'=mean_GDD5, 'sd_GDD5'=sd_GDD5,
             'abiotics'=abiotics)
 
