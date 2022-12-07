@@ -48,13 +48,25 @@ table(is.na(female_yep$WEIGHT))
 
 #Add relative weight column
 female_yep$Ws <- 10^(-5.386 + 3.230 * log10(female_yep$LENGTH))
-female_yep$Wr = female_yep$WEIGHT / female_yep$Ws * 100
+female_yep$Wr <- female_yep$WEIGHT / female_yep$Ws * 100
 
 #Add environmental variables - use mean TP and annual GDD5
-mean_TP
+mean_TP_byYear
 temps.summary
 
-female_yep <- left_join(female_yep, select(mean_TP, YEAR, Mean), by=c("CohortYear"="YEAR")) %>%
+#Combine TP and temp
+GDD_byYear <- temps.summary %>%
+              select("GDD5Annual","Year") %>%
+              filter(Year > 1982 & Year < 2016)
+
+TP_byYear <- mean_TP_byYear %>%
+            select("Year","Mean") %>%
+            filter(Year > 1982 & Year < 2016)
+#Combine abioitic
+abiotics <- merge(GDD_byYear, TP_byYear, by = 'Year')
+abiotics$CohortYear = abiotics$Year-1982
+
+female_yep <- left_join(female_yep, select(mean_TP_byYear, Year, Mean), by=c("CohortYear"="Year")) %>%
   left_join(select(temps.summary, Year, GDD5Annual), by=c("CohortYear"="Year")) %>%
   rename("mean_TP"="Mean", "GDD5"="GDD5Annual")
 female_yep
@@ -101,7 +113,8 @@ dat <- list('N'=nrow(female_yep), 'K'=K, 'Mat'=Mat, 'Age'=Age, 'TL'=TL.mm,
             'Cohort'=Cohort, 'nCohorts'=nCohorts, 'mean_TL'=mean_TL, 'sd_TL'=sd_TL,
             'RW'=RW, 'mean_RW'=mean_RW, 'sd_RW'=sd_RW,
             'TP'=TP, 'mean_TP'=mean_TP, 'sd_TP'=sd_TP,
-            'GDD5'=GDD5, 'mean_GDD5'=mean_GDD5, 'sd_GDD5'=sd_GDD5)
+            'GDD5'=GDD5, 'mean_GDD5'=mean_GDD5, 'sd_GDD5'=sd_GDD5,
+            'abiotics'=abiotics)
 
 
 inits <- function() {
@@ -118,7 +131,7 @@ inits <- function() {
   }
 
 
-stanmatcode = stan_model(file = 'yep_fie_covar.stan')
+stanmatcode = stan_model(file = 'yep_fie_covar_V2.stan')
 fit = sampling(stanmatcode, data=dat, init=inits, 
            iter=4000, warmup=2000, thin=1, chains=3, cores=3, #was 4000 and 2000
            control=list(adapt_delta=0.90,max_treedepth=10) )
@@ -146,7 +159,11 @@ print(fit,pars=c('m[1251]'))
 #print(signif(quantile(cor_u, probs = c(0.025, 0.5, 0.975)), 2))
 #print(mean(cor_u))
 
+<<<<<<< HEAD
 m <- rstan::extract(fit,pars='m')$m
+=======
+m <- data.frame(rstan::extract(fit,pars='m'))
+>>>>>>> ba2c4ca1ef35fef90db7f003f5199a4fcadcbc18
 m
 
 w <- cbind(m[1,],TL.mm,Age, Cohort)
