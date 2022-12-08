@@ -167,47 +167,50 @@ print(fit,pars=c('m[1251]'))
 #print(signif(quantile(cor_u, probs = c(0.025, 0.5, 0.975)), 2))
 #print(mean(cor_u))
 
-<<<<<<< HEAD
+#<<<<<<< HEAD
 m <- rstan::extract(fit,pars='m')$m
-=======
+#=======
 m <- data.frame(rstan::extract(fit,pars='m'))
->>>>>>> ba2c4ca1ef35fef90db7f003f5199a4fcadcbc18
+#>>>>>>> ba2c4ca1ef35fef90db7f003f5199a4fcadcbc18
 m
 
-w <- cbind(m[1,],TL.mm,Age, Cohort)
-table(w[w[,1]<0,4])
+#Create dataframe of maturation prob, length, age, and cohort for plotting
+w <- bind_cols(as.numeric(m[1,]),TL.mm,Age, Cohort)
+names(w) <- c("m", "TL.mm","Age","Cohort")
+
+#Check cohorts with negative maturation probability
+table(w[w$m<0,4])
 
 #Plot maturation data for cohorts with negative maturation probability
-#In some cohorts very large fish have negative maturation probabilities - senescence, mis-ID of spent fish?
-ggplot(filter(female_yep, Cohort %in% c(7,19,20,21,22,23,24,25)), aes(x=LENGTH, y=MAT, color=as.factor(AGE), group=as.factor(AGE))) + 
+#In some cohorts very large fish have negative maturation probabilities because
+#some are identified as immature - senescence, mis-ID of spent fish?  Worth removing immature fish > ~275 mm as outliers?
+ggplot(filter(female_yep, Cohort %in% c(1,8,19,20,21,22)), aes(x=LENGTH, y=MAT, color=as.factor(AGE), group=as.factor(AGE))) + 
          geom_point() + 
          facet_wrap(~Cohort, scales="free")
 
-w <- as_tibble(w)
-names(w) <- c("m", "TL.mm","Age","Cohort")
-ggplot(filter(w, Cohort %in% c(7,19,20,21,22,23,24,25)), aes(x=TL.mm, y=m, group=as.factor(Age), color=as.factor(Age))) + 
+ggplot(filter(w, Cohort %in% c(1,8,19,20,21,22)), aes(x=TL.mm, y=m, group=as.factor(Age), color=as.factor(Age))) + 
   geom_point() + facet_wrap(~Cohort, scales='free')
 
 
-#Use spline interpolation to determine PMRN midpoints for ages 3-5 (older ages declining in m, already mature)
+#Use spline interpolation to determine PMRN midpoints for ages 2-5 (older ages declining in m, already mature)
 w
-nAges <- length(unique(w$Age[w$Age %in% c(3:5)]))
-nCohorts <- length(unique(w$Cohort[w$Age %in% c(3:5)]))
+nAges <- length(unique(w$Age[w$Age %in% c(2:5)]))
+nCohorts <- length(unique(w$Cohort[w$Age %in% c(2:5)]))
 nReps <- dim(m)[1]
-Ages <- sort(unique(w$Age[w$Age %in% c(3:5)]))
-Cohorts <- sort(unique(w$Cohort[w$Age %in% c(3:5)]))
+Ages <- sort(unique(w$Age[w$Age %in% c(2:5)]))
+Cohorts <- sort(unique(w$Cohort[w$Age %in% c(2:5)]))
 
-thing <- as.data.frame(cbind(t(m),TL.mm,Age,Cohort))
-head(thing)
-dim(thing)
+mat.all <- as.data.frame(cbind(t(m),TL.mm,Age,Cohort))
+head(mat.all)
+dim(mat.all)
 
-plot(thing[thing$Cohort==6,1] ~ TL.mm, data=thing[thing$Cohort==6,],col=thing$Age[thing$Cohort==6],ylim=c(-0.5,1),xlim=c(50,350))
+plot(mat.all[mat.all$Cohort==6,1] ~ TL.mm, data=mat.all[mat.all$Cohort==6,],col=mat.all$Age[mat.all$Cohort==6],ylim=c(-0.5,1),xlim=c(50,350))
 # Commented out - takes a long time
 # for (i in 2:1000) {
 #   points(thing[thing$Cohort==6,i] ~ TL.mm, data=thing[thing$Cohort==6,],col=thing$Age[thing$Cohort==6])
 # }
 
-
+#Estimate PMRN midpoints and quantiles for each age and cohort using all posterior draws
 #Make array of i ages, j cohorts, and k replicates
 Lp50 <- array(0, dim = c(nAges,nCohorts,nReps))
 dim(Lp50)
@@ -221,6 +224,7 @@ dim(Lp50.all)
 #Determine slope to make sure positive
 ####First option - Across all replicates, cohorts, and ages use spline interpolation to determine Lp50, Lp25, and Lp75
 ###Lp50.all extrapolates midpoint, while Lp50 only uses individuals with maturation prob that crosses 50%
+###Could probably make this a function at some point
 for (k in 1:nReps) {
       
   d <- as.data.frame(cbind(m[k,],TL.mm,Age,Cohort))
@@ -536,6 +540,6 @@ summary(lm(Median ~ Year, data=sub.Lp50.all[sub.Lp50.all$Age==3,]))
 summary(lm(Median ~ Year, data=sub.Lp50.all[sub.Lp50.all$Age==4,]))
 summary(lm(Median ~ Year, data=sub.Lp50.all[sub.Lp50.all$Age==5,]))
 
-save.image("InitialPMRNrun_1.7.2019.Rdata")
+save.image("YEP_PMRNrun_12.8.2022.Rdata")
 
   
