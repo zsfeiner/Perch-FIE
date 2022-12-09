@@ -39,7 +39,7 @@ for (x in 1:nrow(female_yep)){
     subsetdata=subset(female_yep,female_yep$YEAR==female_yep$YEAR[x])
     lm1=lm(log10(subsetdata$WEIGHT)~log10(subsetdata$LENGTH))
     female_yep$WEIGHT[x] = 10^(coef(lm1)[1] + coef(lm1)[2]* log10(female_yep$LENGTH[x]) )
-    }
+  }
 }
 plot(female_yep$WEIGHT~female_yep$LENGTH)
 
@@ -56,18 +56,18 @@ temps.summary
 
 #Combine TP, temp
 GDD_byYear <- temps.summary %>%
-              select("GDD5Annual","Year") %>%
-              filter(Year > 1982 & Year < 2016)
+  select("GDD5Annual","Year") %>%
+  filter(Year > 1982 & Year < 2016)
 
 TP_byYear <- mean_TP_byYear %>%
-            select("Year","Mean") %>%
-            filter(Year > 1982 & Year < 2016)
+  select("Year","Mean") %>%
+  filter(Year > 1982 & Year < 2016)
 
 #Combine abiotics and fishing indicator
 abiotics <- merge(GDD_byYear, TP_byYear, by = 'Year')
 abiotics$CohortYear = abiotics$Year-1982
 abiotics$Fishing = ifelse(abiotics$Year <= 1996, 1, 0)
-abiotics <- select(abiotics, -Mean) #Drop TP
+abiotics <- select(abiotics, -Mean, -Fishing) #Drop TP and Fishing
 
 
 female_yep <- left_join(female_yep, select(mean_TP_byYear, Year, Mean), by=c("CohortYear"="Year")) %>%
@@ -105,13 +105,13 @@ sd_RW <- sd(female_yep$Wr)
 #TP <- female_yep$mean_TP
 #mean_TP <- mean(female_yep$mean_TP)
 #sd_TP <- sd(female_yep$mean_TP)
-Fishing <- female_yep$Fishing
+#Fishing <- female_yep$Fishing
 GDD5 <- female_yep$GDD5
 mean_GDD5 <- mean(female_yep$GDD5)
 sd_GDD5 <- sd(female_yep$GDD5)
 Cohort <- female_yep$Cohort
 nCohorts <- length(unique(female_yep$Cohort))
-X <- cbind(Age,TL.mm,RW,Fishing,GDD5)
+X <- cbind(Age,TL.mm,RW,GDD5)
 K <- ncol(X)
 Mat <- ifelse(female_yep$MAT=="I",0,1)
 
@@ -120,30 +120,29 @@ Mat <- ifelse(female_yep$MAT=="I",0,1)
 dat <- list('N'=nrow(female_yep), 'K'=K, 'Mat'=Mat, 'Age'=Age, 'TL'=TL.mm, 
             'Cohort'=Cohort, 'nCohorts'=nCohorts, 'mean_TL'=mean_TL, 'sd_TL'=sd_TL,
             'RW'=RW, 'mean_RW'=mean_RW, 'sd_RW'=sd_RW,
-            'Fishing'=Fishing,
             'GDD5'=GDD5, 'mean_GDD5'=mean_GDD5, 'sd_GDD5'=sd_GDD5,
             'abiotics'=abiotics)
 
 
-inits <- function() {
-  beta <- c(rnorm(1,-3,0.05),rnorm(1,1,0.05),rnorm(1,2,0.05),rnorm(1,0,0.05),rnorm(1,0,0.05),rnorm(1,0,0.05),rnorm(1,0,0.05),rnorm(1,0,0.05))
-  sigma_u <- c(runif(1,1,5),runif(1,0.1,1),runif(1,0.5,2),runif(1,0.1,1),runif(1,0.1,1),runif(1,0.1,1),runif(1,0.1,1),runif(1,0.1,1))
+inits_nofish <- function() {
+  beta <- c(rnorm(1,-3,0.05),rnorm(1,1,0.05),rnorm(1,2,0.05),rnorm(1,0,0.05),rnorm(1,0,0.05),rnorm(1,0,0.05),rnorm(1,0,0.05))
+  sigma_u <- c(runif(1,1,5),runif(1,0.1,1),runif(1,0.5,2),runif(1,0.1,1),runif(1,0.1,1),runif(1,0.1,1),runif(1,0.1,1))
   phi_mu <- rnorm(1,200,0.05)
   phi_sigma <- runif(1,0.5,1)
   gamma_mu <- rnorm(1,40,0.05)
   gamma_sigma <- runif(1,0.5,2)
   sigma <- runif(1,1,10)
-  z_u <- matrix(rnorm(8*nCohorts,0,0.5),nrow=8,ncol=nCohorts)
+  z_u <- matrix(rnorm(7*nCohorts,0,0.5),nrow=7,ncol=nCohorts)
   init <- list("beta"=beta, "sigma_u"=sigma_u, "phi_mu"=phi_mu, "phi_sigma"=phi_sigma, "gamma_mu"=gamma_mu, "gamma_sigma"=gamma_sigma, "sigma"=sigma, "z_u"=z_u)
   return(init)
-  }
+}
 
 
-stanmatcode = stan_model(file = 'yep_fie_covar_V2.stan')
-fit = sampling(stanmatcode, data=dat, init=inits, 
-           iter=4000, warmup=2000, thin=1, chains=3, cores=3, #was 4000 and 2000
-           control=list(adapt_delta=0.90,max_treedepth=10) )
-saveRDS(fit,"YEPFIE_covar_enviro.RDS")
+stanmatcode_nofish = stan_model(file = 'yep_fie_covar_NoFishing.stan')
+fit_nofish = sampling(stanmatcode_nofish, data=dat, init=inits_nofish, 
+               iter=4000, warmup=2000, thin=1, chains=3, cores=3, #was 4000 and 2000
+               control=list(adapt_delta=0.90,max_treedepth=10) )
+saveRDS(fit_nofish,"YEPFIE_covar_enviro_nofish.RDS")
 
 print(fit, pars=c('beta','sigma_u','phi_mu','gamma_mu','sigma'), digits=3, prob=c(0.025,0.5,0.975))
 print(fit, pars=c('m'), digits=3, prob=c(0.025,0.5,0.975))
@@ -185,8 +184,8 @@ table(w[w$m<0,4])
 #In some cohorts very large fish have negative maturation probabilities because
 #some are identified as immature - senescence, mis-ID of spent fish?  Worth removing immature fish > ~275 mm as outliers?
 ggplot(filter(female_yep, Cohort %in% c(1,8,19,20,21,22)), aes(x=LENGTH, y=MAT, color=as.factor(AGE), group=as.factor(AGE))) + 
-         geom_point() + 
-         facet_wrap(~Cohort, scales="free")
+  geom_point() + 
+  facet_wrap(~Cohort, scales="free")
 
 ggplot(filter(w, Cohort %in% c(1,8,19,20,21,22)), aes(x=TL.mm, y=m, group=as.factor(Age), color=as.factor(Age))) + 
   geom_point() + facet_wrap(~Cohort, scales='free')
@@ -229,7 +228,7 @@ dim(Lp50.all)
 #Throws NA if - logistic regression of m ~ TL returns negative slope
 #Throws NA if - only 1 fish in age class or only 1 unique length in age class
 for (k in 1:nReps) {
-      
+  
   d <- as.data.frame(cbind(m[k,],TL.mm,Age,Cohort))
   names(d)[1] <- "m"
   
@@ -243,31 +242,31 @@ for (k in 1:nReps) {
         Lp25[i,j,k] <- NA
         Lp50.all[i,j,k] <- NA
       } else {
-
-      reg <- glm(m ~ TL.mm, family=binomial, data=sub.d)
-      if (coef(reg)[2] < 0 | min(sub.d$m, na.rm=TRUE) > 0.5 | max(sub.d$m, na.rm=TRUE) < 0.5) { 
-        Lp50[i,j,k] <- NA } else {
-          midpoint <- spline(sub.d$m,sub.d$TL.mm,xout=0.5)
-          Lp50[i,j,k] <-  midpoint$y
-        }
-      if (coef(reg)[2] < 0 | min(sub.d$m, na.rm=TRUE) > 0.75 | max(sub.d$m, na.rm=TRUE) < 0.75) { 
-        Lp75[i,j,k] <- NA } else {
-          midpoint <- spline(sub.d$m,sub.d$TL.mm,xout=0.75)
-          Lp75[i,j,k] <-  midpoint$y
-        }
-      if (coef(reg)[2] < 0 | min(sub.d$m, na.rm=TRUE) > 0.25 | max(sub.d$m, na.rm=TRUE) < 0.25) { 
-        Lp25[i,j,k] <- NA } else {
-          midpoint <- spline(sub.d$m,sub.d$TL.mm,xout=0.25)
-          Lp25[i,j,k] <-  midpoint$y
-        }
-      if (coef(reg)[2] < 0) { 
-        Lp50.all[i,j,k] <- NA } else {
-          midpoint <- spline(sub.d$m,sub.d$TL.mm,xout=0.5)
-          Lp50.all[i,j,k] <-  midpoint$y
-        }
+        
+        reg <- glm(m ~ TL.mm, family=binomial, data=sub.d)
+        if (coef(reg)[2] < 0 | min(sub.d$m, na.rm=TRUE) > 0.5 | max(sub.d$m, na.rm=TRUE) < 0.5) { 
+          Lp50[i,j,k] <- NA } else {
+            midpoint <- spline(sub.d$m,sub.d$TL.mm,xout=0.5)
+            Lp50[i,j,k] <-  midpoint$y
+          }
+        if (coef(reg)[2] < 0 | min(sub.d$m, na.rm=TRUE) > 0.75 | max(sub.d$m, na.rm=TRUE) < 0.75) { 
+          Lp75[i,j,k] <- NA } else {
+            midpoint <- spline(sub.d$m,sub.d$TL.mm,xout=0.75)
+            Lp75[i,j,k] <-  midpoint$y
+          }
+        if (coef(reg)[2] < 0 | min(sub.d$m, na.rm=TRUE) > 0.25 | max(sub.d$m, na.rm=TRUE) < 0.25) { 
+          Lp25[i,j,k] <- NA } else {
+            midpoint <- spline(sub.d$m,sub.d$TL.mm,xout=0.25)
+            Lp25[i,j,k] <-  midpoint$y
+          }
+        if (coef(reg)[2] < 0) { 
+          Lp50.all[i,j,k] <- NA } else {
+            midpoint <- spline(sub.d$m,sub.d$TL.mm,xout=0.5)
+            Lp50.all[i,j,k] <-  midpoint$y
+          }
+      }
     }
   }
-}
 }
 
 
@@ -419,7 +418,7 @@ library(ggplot2)
 
 ####Everything past this is just plotting the PMRNs in different ways that can be cleaned up later but works for now####
 ggplot(data=sub.Lp50,aes(x=Age,y=Median,group=as.factor(Year)))+
-        geom_line(aes(color=as.factor(Year)),size=1.10) + theme_classic()
+  geom_line(aes(color=as.factor(Year)),size=1.10) + theme_classic()
 
 par(mfrow=c(1,3))
 plot(Median ~ Year, data=sub.Lp50[sub.Lp50$Age==3,],type="b",col=1,pch=20,ylim=c(100,400),xlim=c(1979,2015),main="Age 3",cex=2,lwd=2,ylab="Median Lp50")
@@ -545,5 +544,3 @@ summary(lm(Median ~ Year, data=sub.Lp50.all[sub.Lp50.all$Age==4,]))
 summary(lm(Median ~ Year, data=sub.Lp50.all[sub.Lp50.all$Age==5,]))
 
 save.image("YEP_PMRNrun_12.8.2022.Rdata")
-
-  
