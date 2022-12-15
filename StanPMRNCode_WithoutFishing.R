@@ -144,7 +144,7 @@ fit_nofish = sampling(stanmatcode_nofish, data=dat, init=inits_nofish,
                control=list(adapt_delta=0.90,max_treedepth=10) )
 saveRDS(fit_nofish,"YEPFIE_covar_enviro_nofish.RDS")
 
-print(fit, pars=c('beta','sigma_u','phi_mu','gamma_mu','sigma'), digits=3, prob=c(0.025,0.5,0.975))
+print(fit_nofish, pars=c('beta','sigma_u','phi_mu','gamma_mu','sigma'), digits=3, prob=c(0.025,0.5,0.975))
 print(fit, pars=c('m'), digits=3, prob=c(0.025,0.5,0.975))
 stan_trace(fit,pars=c('p[1]','p[2]','p[3]','p[4]','p[5]','p[6]'))
 stan_trace(fit,pars=c('m[100]','m[200]','m[300]','m[400]','m[500]','m[600]'))
@@ -167,9 +167,9 @@ print(fit,pars=c('m[1251]'))
 #print(mean(cor_u))
 
 #<<<<<<< HEAD
-m <- rstan::extract(fit,pars='m')$m
+m <- rstan::extract(fit_nofish,pars='m')$m
 #=======
-m <- data.frame(rstan::extract(fit,pars='m'))
+m <- data.frame(rstan::extract(fit_nofish,pars='m'))
 #>>>>>>> ba2c4ca1ef35fef90db7f003f5199a4fcadcbc18
 m
 
