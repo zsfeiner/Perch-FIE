@@ -167,7 +167,7 @@ print(fit,pars=c('m[1251]'))
 #print(mean(cor_u))
 
 #<<<<<<< HEAD
-m <- rstan::extract(fit_nofish,pars='m')$m
+m <- rstan::extract(YEPFIE_covar_enviro_nofish, pars='m')$m
 #=======
 m <- data.frame(rstan::extract(fit_nofish,pars='m'))
 #>>>>>>> ba2c4ca1ef35fef90db7f003f5199a4fcadcbc18
@@ -270,7 +270,7 @@ for (k in 1:nReps) {
 }
 
 
-# ######Second option - Use logistic regression
+#### ######Second option - Use logistic regression####
 # for (k in 1:nReps) {
 #   
 #   d <- as.data.frame(cbind(m[k,],TL.mm,Age,Cohort))

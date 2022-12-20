@@ -15,7 +15,7 @@ data {
   real<lower=0> sd_RW;  //sd relative weith for scaling
   real mean_GDD5;   //mean GDD5 for scaling
   real<lower=0> sd_GDD5;  //sd GDD5 for scaling
-  matrix[nCohorts,3] abiotics; //table of annual GDD
+  matrix[nCohorts,3] abiotics; //table of Year, GDD5Annual, CohortYear
 }
 
 
@@ -27,8 +27,8 @@ transformed data {
   sc_TL = (TL - mean_TL)/sd_TL;
   sc_RW = (RW - mean_RW)/sd_RW;
   sc_GDD5 = (GDD5 - mean_GDD5)/sd_GDD5;
-  sc_abiotics[,1] = abiotics[,2]; //cohort year 1983-2015
-  sc_abiotics[,2] = (abiotics[,1] - mean_GDD5) / sd_GDD5; //GDD scaled
+  sc_abiotics[,1] = abiotics[,1]; //Year 1983-2015
+  sc_abiotics[,2] = (abiotics[,2] - mean_GDD5) / sd_GDD5; //GDD scaled
 }
 
 
