@@ -80,7 +80,7 @@ model {
     (beta[6] + u[6,Cohort[i]]) * Age[i] * sc_RW[i];
     
     //Growth
-    y[i] = phi[Cohort[i]] + gamma[Cohort[i]] * Age[i];
+    y[i] = (phi[Cohort[i]] + gamma[Cohort[i]] * (Age[i]));
   
   }
   
@@ -99,6 +99,7 @@ generated quantities {
 
   for (i in 1:N) {
       s[i] = ((TL[i] - gamma[Cohort[i]]) - mean_TL) / sd_TL;  //Previous length
+      //s[i] = ((TL[i] - (1 - pow((Age[i] - 1)/Age[i],gamma[Cohort[i]])) * TL[i]) - mean_TL) / sd_TL;  //Previous length
       
       p[i] = inv_logit((beta[1] + u[1,Cohort[i]]) + 
       (beta[2] + u[2,Cohort[i]]) * Age[i] +

@@ -2,7 +2,7 @@ library(rstan)
 library(coda)
 
 #Run TP_Data.R to load TP data - will be ignored in model
-source("TP_Data.R")
+#source("TP_Data.R")
 #Run SummarizeWaterTemp.R to load water temp data
 source("SummarizeWaterTemps.R")
 
@@ -56,31 +56,31 @@ temps.summary
 
 #Combine TP, temp
 GDD_byYear <- temps.summary %>%
-  select("GDD5Annual","Year") %>%
-  filter(Year > 1982 & Year < 2016)
+  select("GDD5Annual","Year")
 
-TP_byYear <- mean_TP_byYear %>%
-  select("Year","Mean") %>%
-  filter(Year > 1982 & Year < 2016)
+#Not used
+#TP_byYear <- mean_TP_byYear %>%
+ # select("Year","Mean") %>%
+ # filter(Year > 1982 & Year < 2016)
 
 #Combine abiotics and fishing indicator
-abiotics <- merge(GDD_byYear, TP_byYear, by = 'Year')
+abiotics <- GDD_byYear
 abiotics$CohortYear = abiotics$Year-1982
 abiotics$Fishing = ifelse(abiotics$Year <= 1996, 1, 0)
-abiotics <- select(abiotics, -Mean, -Fishing) #Drop TP and Fishing
+abiotics <- select(abiotics, -Fishing) #Drop Fishing
 
 
-female_yep <- left_join(female_yep, select(mean_TP_byYear, Year, Mean), by=c("CohortYear"="Year")) %>%
-  left_join(select(temps.summary, Year, GDD5Annual), by=c("CohortYear"="Year")) %>%
-  rename("mean_TP"="Mean", "GDD5"="GDD5Annual")
+female_yep <- left_join(female_yep, select(temps.summary, Year, GDD5Annual), by=c("CohortYear"="Year")) %>%
+  rename("GDD5"="GDD5Annual")
 female_yep
 
 #Add commercial fishing indicator
 female_yep$Fishing = ifelse(female_yep$CohortYear <= 1996, 1, 0)
 
 ######FOR NOW FILTER TO ENVIRONMENTAL DATA######
-female_yep <- filter(female_yep, !is.na(mean_TP), !is.na(GDD5))
-female_yep
+#Not needed - no GDD NAs
+#female_yep <- filter(female_yep, !is.na(mean_TP), !is.na(GDD5))
+#female_yep
 
 #######Reassign cohorts#####
 #assign cohort year
@@ -145,15 +145,15 @@ fit_nofish = sampling(stanmatcode_nofish, data=dat, init=inits_nofish,
 saveRDS(fit_nofish,"YEPFIE_covar_enviro_nofish.RDS")
 
 print(fit_nofish, pars=c('beta','sigma_u','phi_mu','gamma_mu','sigma'), digits=3, prob=c(0.025,0.5,0.975))
-print(fit, pars=c('m'), digits=3, prob=c(0.025,0.5,0.975))
-stan_trace(fit,pars=c('p[1]','p[2]','p[3]','p[4]','p[5]','p[6]'))
-stan_trace(fit,pars=c('m[100]','m[200]','m[300]','m[400]','m[500]','m[600]'))
-stan_trace(fit,pars=c('beta','gamma_mu','phi_mu'))
-stan_trace(fit,pars=c('L_u'))
-pairs(fit,pars=c('beta','gamma_mu','phi_mu'))
+print(fit_nofish, pars=c('m'), digits=3, prob=c(0.025,0.5,0.975))
+stan_trace(fit_nofish,pars=c('p[1]','p[2]','p[3]','p[4]','p[5]','p[6]'))
+stan_trace(fit_nofish,pars=c('m[100]','m[200]','m[300]','m[400]','m[500]','m[600]'))
+stan_trace(fit_nofish,pars=c('beta','gamma_mu','phi_mu'))
+stan_trace(fit_nofish,pars=c('L_u'))
+pairs(fit_nofish,pars=c('beta','gamma_mu','phi_mu'))
 
-print(fit,pars=c('p[1251]','prev_p[1251]'))
-print(fit,pars=c('m[1251]'))
+print(fit_nofish,pars=c('p[1251]','prev_p[1251]'))
+print(fit_nofish,pars=c('m[1251]'))
 
 
 #plot(female_yep$TL.mm[female_yep$Cohort==9],female_yep$Mat[female_yep$Cohort==9],col=female_yep$Age[female_yep$Cohort==9])
@@ -167,7 +167,7 @@ print(fit,pars=c('m[1251]'))
 #print(mean(cor_u))
 
 #<<<<<<< HEAD
-m <- rstan::extract(YEPFIE_covar_enviro_nofish, pars='m')$m
+m <- rstan::extract(fit_nofish, pars='m')$m
 #=======
 m <- data.frame(rstan::extract(fit_nofish,pars='m'))
 #>>>>>>> ba2c4ca1ef35fef90db7f003f5199a4fcadcbc18
@@ -183,11 +183,11 @@ table(w[w$m<0,4])
 #Plot maturation data for cohorts with negative maturation probability
 #In some cohorts very large fish have negative maturation probabilities because
 #some are identified as immature - senescence, mis-ID of spent fish?  Worth removing immature fish > ~275 mm as outliers?
-ggplot(filter(female_yep, Cohort %in% c(1,8,19,20,21,22)), aes(x=LENGTH, y=MAT, color=as.factor(AGE), group=as.factor(AGE))) + 
+ggplot(filter(female_yep, Cohort %in% c(8,11,16,19,20,21,22,24,26,28)), aes(x=LENGTH, y=MAT, color=as.factor(AGE), group=as.factor(AGE))) + 
   geom_point() + 
   facet_wrap(~Cohort, scales="free")
 
-ggplot(filter(w, Cohort %in% c(1,8,19,20,21,22)), aes(x=TL.mm, y=m, group=as.factor(Age), color=as.factor(Age))) + 
+ggplot(filter(w, Cohort %in% c(8,11,16,19,20,21,22,24,26,28)), aes(x=TL.mm, y=m, group=as.factor(Age), color=as.factor(Age))) + 
   geom_point() + facet_wrap(~Cohort, scales='free')
 
 
@@ -303,7 +303,7 @@ for (k in 1:nReps) {
 #     }
 #   }
 # }
-# 
+##### 
 
 rowSums(is.na(Lp50[1,,]))
 rowSums(is.na(Lp50[2,,]))
@@ -543,4 +543,4 @@ summary(lm(Median ~ Year, data=sub.Lp50.all[sub.Lp50.all$Age==3,]))
 summary(lm(Median ~ Year, data=sub.Lp50.all[sub.Lp50.all$Age==4,]))
 summary(lm(Median ~ Year, data=sub.Lp50.all[sub.Lp50.all$Age==5,]))
 
-save.image("YEP_PMRNrun_12.8.2022.Rdata")
+save.image("YEP_PMRNrun_NoFishing_12.8.2022.Rdata")

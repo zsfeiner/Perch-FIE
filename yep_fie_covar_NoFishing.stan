@@ -66,6 +66,7 @@ model {
   beta ~ normal(0,10);
   L_u ~ lkj_corr_cholesky(2.0);
   to_vector(z_u) ~ normal(0,1);
+  sigma_u ~ cauchy(0,5);
   
   //Growth
   phi ~ normal(phi_mu, phi_sigma);
@@ -107,12 +108,12 @@ generated quantities {
   vector[N] m;
 
   for (i in 1:N) {
-    if(Cohort[i] == 1){ //if Cohort year is 1983 (first cohort year) then skip, we don't have TP for 1982
-        s[i] = 0;
-        p[i] = 0;
-        prev_p[i] = 0;
-        m[i] = 0;
-    }
+    //if(Cohort[i] == 1){ //if Cohort year is 1983 (first cohort year) then skip, we don't have TP for 1982
+    //    s[i] = 0;
+    //    p[i] = 0;
+    //    prev_p[i] = 0;
+    //    m[i] = 0;
+    //}
     else{
       s[i] = ((TL[i] - gamma[Cohort[i]]) - mean_TL) / sd_TL;
       
