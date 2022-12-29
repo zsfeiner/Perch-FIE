@@ -10,3 +10,8 @@ WDNR_Length_Summaries.csv
 WDNR_Length_Summaries.pdf
 WDNR_YEP_QUERY.csv
 YEPFIE_covar_enviro.RDS
+YEPFIE_covar_NoEnviro.RDS
+OldVersionTest.R
+OldVersionTest.stan
+YEPFIE_NoEnviro.RDS
+YEPFIE_covar_enviro_nofish.RDS
