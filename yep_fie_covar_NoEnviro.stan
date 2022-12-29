@@ -57,6 +57,7 @@ model {
   beta ~ normal(0,10);
   L_u ~ lkj_corr_cholesky(2.0);
   to_vector(z_u) ~ normal(0,1);
+  sigma_u ~ cauchy(0,5);
   
   //Growth
   phi ~ normal(phi_mu, phi_sigma);

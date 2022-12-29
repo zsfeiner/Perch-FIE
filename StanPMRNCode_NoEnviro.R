@@ -82,21 +82,21 @@ fit = sampling(stanmatcode, data=dat, init=inits,
                control=list(adapt_delta=0.90,max_treedepth=10) )
 saveRDS(fit,"YEPFIE_NoEnviro.RDS")
 
-print(fit, pars=c('beta','sigma_u','phi_mu','gamma_mu','sigma'), digits=3, prob=c(0.025,0.5,0.975))
-print(fit, pars=c('m'), digits=3, prob=c(0.025,0.5,0.975))
-stan_trace(fit,pars=c('p[1]','p[2]','p[3]','p[4]','p[5]','p[6]'))
-stan_trace(fit,pars=c('m[100]','m[200]','m[300]','m[400]','m[500]','m[600]'))
-stan_trace(fit,pars=c('beta','gamma_mu','phi_mu'))
-stan_trace(fit,pars=c('L_u'))
-pairs(fit,pars=c('beta','gamma_mu','phi_mu'))
+# print(fit, pars=c('beta','sigma_u','phi_mu','gamma_mu','sigma'), digits=3, prob=c(0.025,0.5,0.975))
+# print(fit, pars=c('m'), digits=3, prob=c(0.025,0.5,0.975))
+# stan_trace(fit,pars=c('p[1]','p[2]','p[3]','p[4]','p[5]','p[6]'))
+# stan_trace(fit,pars=c('m[100]','m[200]','m[300]','m[400]','m[500]','m[600]'))
+# stan_trace(fit,pars=c('beta','gamma_mu','phi_mu'))
+# stan_trace(fit,pars=c('L_u'))
+# pairs(fit,pars=c('beta','gamma_mu','phi_mu'))
+# 
+# print(fit,pars=c('p[1251]','prev_p[1251]'))
+# print(fit,pars=c('m[1251]'))
 
-print(fit,pars=c('p[1251]','prev_p[1251]'))
-print(fit,pars=c('m[1251]'))
+m <- rstan::extract(fit,pars='m')$m
+dim(m)
 
-m <- extract(fit,pars='m')$m
-m
-
-w <- bind_cols(m[1,],TL.mm,Age, Cohort)
+w <- bind_cols(robustbase::colMedians(m),TL.mm,Age, Cohort)
 head(w)
 names(w) <- c('m','TL.mm','Age','Cohort')
 head(w)
@@ -104,7 +104,7 @@ head(w)
 table(filter(w, m<0)$Cohort)
 neg.cohorts <- names(table(filter(w, m<0)$Cohort))
 
-#View cohorts with mat probabilities that are negative
+#View cohorts with individuals with median mat probabilities that are negative
 ggplot(filter(w, Cohort %in% neg.cohorts), aes(x=TL.mm, y=m, color=as.factor(Age))) + 
   geom_point() + facet_wrap(~Cohort, scales="free")
 
@@ -176,7 +176,7 @@ Lps <- left_join(Lps, yearnames)
 Lps
 
 #Plot Lp50s with no more than 5% NAs
-ggplot(filter(Lps, Lp=="Lp50", NAs < 3000*0.05), aes(x=CohortYear, y=median, color=factor(Age))) + 
+ggplot(filter(Lps, Lp=="Lp50", NAs < length(ms)*0.05), aes(x=CohortYear, y=median, color=factor(Age))) + 
   geom_point(size=2) + geom_line(size=1.25) + ylim(0,500) +
   geom_errorbar(aes(x=CohortYear, ymin=CI2.5, ymax=CI97.5), width=0.05) + 
   theme_classic()
