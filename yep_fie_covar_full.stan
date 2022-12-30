@@ -6,6 +6,7 @@ data {
   vector[N] TL;    //Length, response variable
   vector[N] RW;   //relative weight
   vector[N] GDD5; //annual GDD5
+  vector[N] TP; //annual mean TP
   int<lower=1> nCohorts;   //Number of cohorts
   int<lower=1,upper=nCohorts> Cohort[N];  //Cohort ID
   int<lower=0,upper=1> Mat[N];   // Maturation status
@@ -15,8 +16,10 @@ data {
   real<lower=0> sd_RW;  //sd relative weith for scaling
   real mean_GDD5;   //mean GDD5 for scaling
   real<lower=0> sd_GDD5;  //sd GDD5 for scaling
+  real mean_TP;   //mean TP for scaling
+  real<lower=0> sd_TP;  //sd TP for scaling
   int<lower=1> nAbiotics; //number of years with abiotic vars
-  matrix[nAbiotics,3] abiotics; //table of Year, CohortYear, GDD5Annual
+  matrix[nAbiotics,4] abiotics; //table of Year, CohortYear, GDD5Annual, TP
   int<lower=1> Year[N]; //Year sampled
 
 }
@@ -26,13 +29,16 @@ transformed data {
   vector[N] sc_TL;
   vector[N] sc_RW;
   vector[N] sc_GDD5;
-  matrix[nAbiotics,3] sc_abiotics;
+  vector[N] sc_TP;
+  matrix[nAbiotics,4] sc_abiotics;
   sc_TL = (TL - mean_TL)/sd_TL;
   sc_RW = (RW - mean_RW)/sd_RW;
   sc_GDD5 = (GDD5 - mean_GDD5)/sd_GDD5;
+  sc_TP = (TP - mean_TP)/sd_TP;
   sc_abiotics[,1] = abiotics[,1]; //Year 1983-2018
   sc_abiotics[,2] = abiotics[,2]; //CohortYear 5-40
   sc_abiotics[,3] = (abiotics[,3] - mean_GDD5) / sd_GDD5; //GDD scaled
+  sc_abiotics[,4] = (abiotics[,4] - mean_TP) / sd_TP; //TP scaled
 }
 
 
@@ -91,7 +97,8 @@ model {
     (beta[4] + u[4,Cohort[i]]) * sc_RW[i] +    // relative weight add elsewhere
     (beta[5] + u[5,Cohort[i]]) * Age[i] * sc_TL[i] + 
     (beta[6] + u[6,Cohort[i]]) * Age[i] * sc_RW[i] + //new line add elsewhere
-    (beta[7] + u[7,Cohort[i]]) * sc_GDD5[i];  //add annual GDD5 - need to have interaction with age?  I think no?
+    (beta[7] + u[7,Cohort[i]]) * sc_GDD5[i] +  //add annual GDD5 - need to have interaction with age?  I think no?;  
+    (beta[8] + u[8,Cohort[i]]) * sc_TP[i];  //add TP - need to have interaction with age?  I think no?
  
     //Growth
     y[i] = phi[Cohort[i]] + gamma[Cohort[i]] * Age[i];
@@ -127,7 +134,8 @@ generated quantities {
       (beta[4] + u[4,Cohort[i]]) * sc_RW[i] + 
       (beta[5] + u[5,Cohort[i]]) * Age[i] * sc_TL[i] +
       (beta[6] + u[6,Cohort[i]]) * Age[i] * sc_RW[i] +
-      (beta[7] + u[7,Cohort[i]]) * sc_GDD5[i]);
+      (beta[7] + u[7,Cohort[i]]) * sc_GDD5[i] +
+      (beta[8] + u[8,Cohort[i]]) * sc_TP[i]);
       
       prev_p[i] = inv_logit((beta[1] + u[1,Cohort[i]]) + 
       (beta[2] + u[2,Cohort[i]]) * (Age[i] - 1) +
@@ -135,7 +143,8 @@ generated quantities {
       (beta[4] + u[4,Cohort[i]]) * sc_RW[i] +               //Do we assume relative weight was the same last year? ZF - yeesh, I guess?
       (beta[5] + u[5,Cohort[i]]) * (Age[i] - 1) * s[i] +
       (beta[6] + u[6,Cohort[i]]) * (Age[i] - 1) * sc_RW[i] +
-      (beta[7] + u[7,Cohort[i]]) * sc_abiotics[Year[i],3]);    // GDD from previous year
+      (beta[7] + u[7,Cohort[i]]) * sc_abiotics[Year[i],3] +    // GDD from previous year
+      (beta[8] + u[8,Cohort[i]]) * sc_abiotics[Year[i],4]);    // TP from previous year
       
       m[i] = (p[i] - prev_p[i]) / (1 - prev_p[i] + 0.00001); //add small offset, prevents division by 0
     //}

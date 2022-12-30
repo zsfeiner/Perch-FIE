@@ -4,7 +4,7 @@ library(tidyverse)
 library(ggplot2)
 
 #Run TP_Data.R to load TP data - will be ignored in model
-#source("TP_Data.R")
+source("TP_Data.R")
 #Run SummarizeWaterTemp.R to load water temp data
 source("SummarizeWaterTemps.R")
 
@@ -43,7 +43,7 @@ female_yep$Ws <- 10^(-5.386 + 3.230 * log10(female_yep$LENGTH))
 female_yep$Wr <- female_yep$WEIGHT / female_yep$Ws * 100
 
 #Add environmental variables - use mean TP and annual GDD5
-#mean_TP_byYear
+mean_TP_byYear
 temps.summary
 
 #Combine TP, temp
@@ -64,16 +64,21 @@ GDD_byYear <- temps.summary %>%
 #Start abiotics one year before last cohortyear
 
 abiotics <- GDD_byYear %>%
+  inner_join(mean_TP_byYear) %>%
   mutate(CohortYear = Year - min(female_yep$CohortYear) + 1) %>%
   filter(Year >= min(female_yep$YEAR) - 1) %>%
+  rename(TP=Mean) %>%
   mutate(Fishing = ifelse(Year <= 1996, 1, 0)) %>%
-  select(Year, CohortYear, GDD5Annual)
+  select(Year, CohortYear, GDD5Annual, TP)
 
 #likely going to have to feed fishing and GDD in separately as GDD should index on year
-##and fishing should index on cohort
+##and fishing should index on cohort - or not, should it be on year?
+
 
 female_yep <- left_join(female_yep, select(temps.summary, Year, GDD5Annual), by=c("YEAR"="Year")) %>%
   rename("GDD5"="GDD5Annual") %>%
+  left_join(select(mean_TP_byYear, Year, Mean), by=c("YEAR"="Year")) %>%
+  rename("TP"="Mean") %>%
   mutate(Fishing = ifelse(female_yep$CohortYear <= 1996, 1, 0))
 
 ######FOR NOW FILTER TO ENVIRONMENTAL DATA######
@@ -101,9 +106,9 @@ sd_TL <- sd(female_yep$LENGTH)
 RW <- female_yep$Wr
 mean_RW <- mean(female_yep$Wr)
 sd_RW <- sd(female_yep$Wr)
-#TP <- female_yep$mean_TP
-#mean_TP <- mean(female_yep$mean_TP)
-#sd_TP <- sd(female_yep$mean_TP)
+TP <- female_yep$TP
+mean_TP <- mean(abiotics$TP)
+sd_TP <- sd(abiotics$TP)
 #Fishing <- female_yep$Fishing
 GDD5 <- female_yep$GDD5
 mean_GDD5 <- mean(abiotics$GDD5Annual) #I think this is how this should be scaled
@@ -111,7 +116,7 @@ sd_GDD5 <- sd(abiotics$GDD5Annual) #I think this is how this should be scaled
 Cohort <- female_yep$Cohort
 Year <- female_yep$YEAR - min(female_yep$YEAR) + 1  #Year marker starting from 1 to get prev year's GDD from abiotics
 nCohorts <- length(unique(female_yep$Cohort))
-X <- cbind(Age,TL.mm,RW,GDD5)
+X <- cbind(Age,TL.mm,RW,GDD5,TP)
 K <- ncol(X)
 Mat <- ifelse(female_yep$MAT=="I",0,1)
 nAbiotics <- nrow(abiotics)
@@ -122,43 +127,44 @@ dat <- list('N'=nrow(female_yep), 'K'=K, 'Mat'=Mat, 'Age'=Age, 'TL'=TL.mm,
             'Cohort'=Cohort, 'nCohorts'=nCohorts, 'mean_TL'=mean_TL, 'sd_TL'=sd_TL,
             'RW'=RW, 'mean_RW'=mean_RW, 'sd_RW'=sd_RW,
             'GDD5'=GDD5, 'mean_GDD5'=mean_GDD5, 'sd_GDD5'=sd_GDD5,
+            'TP'=TP, 'mean_TP'=mean_TP, 'sd_TP'=sd_TP,
             'abiotics'=abiotics, 'Year'=Year, 'nAbiotics'=nAbiotics)
 
 
-inits_nofish <- function() {
-  beta <- c(rnorm(1,-3,0.05),rnorm(1,1,0.05),rnorm(1,2,0.05),rnorm(1,0,0.05),rnorm(1,0,0.05),rnorm(1,0,0.05),rnorm(1,0,0.05))
-  sigma_u <- c(runif(1,1,5),runif(1,0.1,1),runif(1,0.5,2),runif(1,0.1,1),runif(1,0.1,1),runif(1,0.1,1),runif(1,0.1,1))
+inits_full <- function() {
+  beta <- c(rnorm(1,-3,0.05),rnorm(1,1,0.05),rnorm(1,2,0.05),rnorm(1,0,0.05),rnorm(1,0,0.05),rnorm(1,0,0.05),rnorm(1,0,0.05),rnorm(1,0,0.05))
+  sigma_u <- c(runif(1,1,5),runif(1,0.1,1),runif(1,0.5,2),runif(1,0.1,1),runif(1,0.1,1),runif(1,0.1,1),runif(1,0.1,1),runif(1,0.1,1))
   phi_mu <- rnorm(1,200,0.05)
   phi_sigma <- runif(1,0.5,1)
   gamma_mu <- rnorm(1,40,0.05)
   gamma_sigma <- runif(1,0.5,2)
   sigma <- runif(1,1,10)
-  z_u <- matrix(rnorm(7*nCohorts,0,0.5),nrow=7,ncol=nCohorts)
+  z_u <- matrix(rnorm(8*nCohorts,0,0.5),nrow=8,ncol=nCohorts)
   init <- list("beta"=beta, "sigma_u"=sigma_u, "phi_mu"=phi_mu, "phi_sigma"=phi_sigma, "gamma_mu"=gamma_mu, "gamma_sigma"=gamma_sigma, "sigma"=sigma, "z_u"=z_u)
   return(init)
 }
 
 
-stanmatcode_nofish = stan_model(file = 'yep_fie_covar_nofish.stan')
-fit_nofish = sampling(stanmatcode_nofish, data=dat, init=inits_nofish, 
+stanmatcode_full = stan_model(file = 'yep_fie_covar_full.stan')
+fit_full = sampling(stanmatcode_full, data=dat, init=inits_full, 
                       iter=4000, warmup=2000, thin=1, chains=3, cores=3, #was 4000 and 2000
                       control=list(adapt_delta=0.90,max_treedepth=10) )
-saveRDS(fit_nofish,"YEPFIE_covar_enviro_nofish.RDS")
+saveRDS(fit_full,"YEPFIE_covar_enviro_full.RDS")
 
-print(fit_nofish, pars=c('beta','sigma_u','phi_mu','gamma_mu','sigma'), digits=3, prob=c(0.025,0.5,0.975))
-print(fit_nofish, pars=c('m'), digits=3, prob=c(0.025,0.5,0.975))
-stan_trace(fit_nofish,pars=c('p[1]','p[2]','p[3]','p[4]','p[5]','p[6]'))
-stan_trace(fit_nofish,pars=c('m[100]','m[200]','m[300]','m[400]','m[500]','m[600]'))
-stan_trace(fit_nofish,pars=c('beta','gamma_mu','phi_mu'))
-stan_trace(fit_nofish,pars=c('L_u'))
-pairs(fit_nofish,pars=c('beta','gamma_mu','phi_mu'))
+print(fit_full, pars=c('beta','sigma_u','phi_mu','gamma_mu','sigma'), digits=3, prob=c(0.025,0.5,0.975))
+print(fit_full, pars=c('m'), digits=3, prob=c(0.025,0.5,0.975))
+stan_trace(fit_full,pars=c('p[1]','p[2]','p[3]','p[4]','p[5]','p[6]'))
+stan_trace(fit_full,pars=c('m[100]','m[200]','m[300]','m[400]','m[500]','m[600]'))
+stan_trace(fit_full,pars=c('beta','gamma_mu','phi_mu'))
+stan_trace(fit_full,pars=c('L_u'))
+pairs(fit_full,pars=c('beta','gamma_mu','phi_mu'))
 
-print(fit_nofish,pars=c('p[1251]','prev_p[1251]'))
-print(fit_nofish,pars=c('m[1251]'))
+print(fit_full,pars=c('p[1251]','prev_p[1251]'))
+print(fit_full,pars=c('m[1251]'))
 
 
 
-m <- rstan::extract(fit_nofish,pars='m')$m
+m <- rstan::extract(fit_full,pars='m')$m
 dim(m)
 
 w <- bind_cols(robustbase::colMedians(m),TL.mm,Age, Cohort)
