@@ -15,7 +15,10 @@ data {
   real<lower=0> sd_RW;  //sd relative weith for scaling
   real mean_GDD5;   //mean GDD5 for scaling
   real<lower=0> sd_GDD5;  //sd GDD5 for scaling
-  matrix[nCohorts,3] abiotics; //table of Year, GDD5Annual, CohortYear
+  int<lower=1> nAbiotics; //number of years with abiotic vars
+  matrix[nAbiotics,3] abiotics; //table of Year, CohortYear, GDD5Annual
+  int<lower=1> Year[N]; //Year sampled
+
 }
 
 
@@ -23,12 +26,13 @@ transformed data {
   vector[N] sc_TL;
   vector[N] sc_RW;
   vector[N] sc_GDD5;
-  matrix[nCohorts,2] sc_abiotics;
+  matrix[nAbiotics,3] sc_abiotics;
   sc_TL = (TL - mean_TL)/sd_TL;
   sc_RW = (RW - mean_RW)/sd_RW;
   sc_GDD5 = (GDD5 - mean_GDD5)/sd_GDD5;
-  sc_abiotics[,1] = abiotics[,1]; //Year 1983-2015
-  sc_abiotics[,2] = (abiotics[,2] - mean_GDD5) / sd_GDD5; //GDD scaled
+  sc_abiotics[,1] = abiotics[,1]; //Year 1983-2018
+  sc_abiotics[,2] = abiotics[,2]; //CohortYear 5-40
+  sc_abiotics[,3] = (abiotics[,3] - mean_GDD5) / sd_GDD5; //GDD scaled
 }
 
 
@@ -114,7 +118,7 @@ generated quantities {
     //    prev_p[i] = 0;
     //    m[i] = 0;
     //}
-    else{
+    //else{
       s[i] = ((TL[i] - gamma[Cohort[i]]) - mean_TL) / sd_TL;
       
       p[i] = inv_logit((beta[1] + u[1,Cohort[i]]) + 
@@ -131,9 +135,9 @@ generated quantities {
       (beta[4] + u[4,Cohort[i]]) * sc_RW[i] +               //Do we assume relative weight was the same last year? ZF - yeesh, I guess?
       (beta[5] + u[5,Cohort[i]]) * (Age[i] - 1) * s[i] +
       (beta[6] + u[6,Cohort[i]]) * (Age[i] - 1) * sc_RW[i] +
-      (beta[7] + u[7,Cohort[i]]) * sc_abiotics[Cohort[i]-1,2]);    // GDD
+      (beta[7] + u[7,Cohort[i]]) * sc_abiotics[Year[i],3]);    // GDD from previous year
       
       m[i] = (p[i] - prev_p[i]) / (1 - prev_p[i] + 0.00001); //add small offset, prevents division by 0
-    }
+    //}
   } 
 }

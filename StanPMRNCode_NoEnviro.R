@@ -181,4 +181,4 @@ ggplot(filter(Lps, Lp=="Lp50", NAs < length(ms)*0.05), aes(x=CohortYear, y=media
   geom_errorbar(aes(x=CohortYear, ymin=CI2.5, ymax=CI97.5), width=0.05) + 
   theme_classic()
 
-
+save.image("YEPFIE_NoEnviro.Rdata")
