@@ -124,5 +124,5 @@ CoefPlot_subset<-(ggplot(data=annual_effects,aes(x=Cohort,y=MED))+
 )
 CoefPlot_subset
 
-ggsave(file="./Figures/Coef_By_Cohort.svg", plot=CoefPlot_subset, width=10, height=15)
-ggsave(file="./Figures/Coef_By_Cohort.png", plot=CoefPlot_subset, width=10, height=15)
+ggsave(file="./Figures/Coef_By_Cohort.svg", plot=CoefPlot_subset, width=14, height=12)
+ggsave(file="./Figures/Coef_By_Cohort.png", plot=CoefPlot_subset, width=14, height=12)
