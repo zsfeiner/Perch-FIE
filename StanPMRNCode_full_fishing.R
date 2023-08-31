@@ -98,6 +98,9 @@ female_yep <- left_join(female_yep, select(temps.summary, Year, GDD5Annual), by=
 ##########################
 
 
+
+
+
 #Female YEP
 N = nrow(female_yep)
 
@@ -166,6 +169,11 @@ pairs(fit_full_fishing,pars=c('beta','gamma_mu','phi_mu'))
 
 print(fit_full_fishing,pars=c('p[1251]','prev_p[1251]'))
 print(fit_full_fishing,pars=c('m[1251]'))
+
+
+trace_1<-stan_trace(fit_full,pars=c('beta','sigma_u','phi_mu','phi_sigma','gamma_mu','gamma_sigma','sigma'))
+ggsave(file="./Figures/App_traceplot.svg", plot=trace_1, width=16, height=10)
+ggsave(file="./Figures/App_traceplot.png", plot=trace_1, width=16, height=10)
 
 
 
