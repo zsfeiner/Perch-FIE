@@ -251,10 +251,124 @@ yearnames
 Lps <- left_join(Lps, yearnames)
 Lps
 
-#Plot Lp50s with no more than 5% NAs
-ggplot(filter(Lps, Lp=="Lp50", NAs < length(ms)*0.05), aes(x=CohortYear, y=median, color=factor(Age))) + 
-  geom_point(size=2) + geom_line(size=1.25) + ylim(0,500) +
-  geom_errorbar(aes(x=CohortYear, ymin=CI2.5, ymax=CI97.5), width=0.05) + 
-  theme_classic()
+filtdat <- filter(Lps, Lp=="Lp50",NAs < length(ms)*0.05, median < 600) %>%
+  group_by(Age) %>%
+  mutate(xjitter = sort(rnorm(n=n(), mean=0, sd=0.1)))
 
-save.image("YEP_PMRNrun_full.Rdata")
+all.age.cohort <- filtdat %>% expand(Age, Cohort) %>% left_join(yearnames) %>% filter(Age %in% c(2:5))
+filtdat2 <- left_join(all.age.cohort, filtdat) %>% arrange(Cohort, Age) %>%
+  group_by(Age) %>%
+  mutate(xjitter = sort(rnorm(n=n(), mean=0, sd=0.1)))
+
+#Plot Lp50s with no more than 5% NAs
+timeplot <- ggplot(filtdat2, aes(x=CohortYear, y=median, color=factor(Age))) + 
+  geom_point(size=2) + geom_line(size=1.25) + 
+  scale_y_continuous(limits=c(0,500), oob=scales::squish) + 
+  geom_errorbar(aes(x=CohortYear, ymin=CI2.5, ymax=CI97.5), width=0.0) + 
+  theme_classic() + scale_color_viridis_d() + 
+  labs(x="Cohort year",y=bquote(Lp[50]), color="Age") + scale_x_continuous(breaks=c(seq(1980,2020,5)))
+
+timeplot
+
+ageplot <- ggplot(filtdat2, aes(x=Age+xjitter, y=median, group=CohortYear, color=CohortYear)) + 
+  geom_line(lwd=1) + geom_point() +
+  geom_errorbar(aes(x=Age+xjitter, ymin=CI2.5, ymax=CI97.5, group=CohortYear), width=0.00) +
+  scale_color_viridis_c() + theme_classic() + scale_y_continuous(limits=c(0,500), oob=scales::squish)+
+  labs(x="Age", y=bquote(Lp[50]), color="Cohort year") 
+ageplot
+
+library(gridExtra)
+library(ggpubr)
+finalplot <- ggarrange(ageplot, timeplot, ncol=1, labels=c("a)","b)"), font.label=list(face="plain"),
+                       hjust=-3.8)
+finalplot
+ggsave("~/External Projects/Lake Michigan YEP FIE/Perch-FIE/Figures/PMRN_plot.png", 
+       plot=finalplot, width=3.5, height=5, units="in", dpi=500,
+       scale=1.5)
+
+
+save.image("YEP_PMRNrun_full_fishing.Rdata")
+
+
+#Examine variance of Lp estimates over time
+mats
+head(mats)
+dim(mats)
+
+CV <- function(x) { return(sd(x, na.rm=T)/mean(x, na.rm=T))}
+
+makezero <- function(x) {x[x<0] <- 0; return(x)}
+
+matCVs <- mats %>%
+  filter(Age %in% c(2:5)) %>%
+  mutate_all(makezero) %>%
+  group_by(Cohort, Age) %>%
+  summarize_at(vars(ms), CV) %>%
+  ungroup(.) %>%
+  mutate(mean=rowMeans(x=select(., all_of(ms)), na.rm=T),
+         median = apply(select(.,all_of(ms)), 1, median, na.rm=T),
+         CI2.5 = apply(select(., all_of(ms)), 1, quantile, probs=0.025, na.rm=T),
+         CI97.5 = apply(select(., all_of(ms)), 1, quantile, probs=0.975, na.rm=T),
+         NAs = rowSums(is.na(select(., all_of(ms))))) %>%
+  select(Cohort, Age, mean, median, CI2.5, CI97.5, NAs)
+
+filtCVs <- filter(matCVs, NAs < length(ms)*0.05) %>%
+  group_by(Age) %>%
+  mutate(xjitter = sort(rnorm(n=n(), mean=0, sd=0.1)))
+
+filtCVs <- left_join(filtCVs, yearnames)
+
+all.age.cohort <- filtCVs %>% expand(Age, Cohort) %>% left_join(yearnames) %>% filter(Age %in% c(2:5))
+filtCVs2 <- left_join(all.age.cohort, filtCVs) %>% arrange(Cohort, Age) %>%
+  group_by(Age) %>%
+  mutate(xjitter = sort(rnorm(n=n(), mean=0, sd=0.1)))
+
+#Plot CVs with no more than 5% NAs
+timeCVs <- ggplot(filtCVs2, aes(x=CohortYear, y=median, color=factor(Age))) + 
+  geom_point(size=2) + geom_line(size=1.25) + 
+  #scale_y_continuous(lim, oob=scales::squish) + 
+  geom_errorbar(aes(x=CohortYear, ymin=CI2.5, ymax=CI97.5), width=0.0) + 
+  theme_classic() + scale_color_viridis_d() + 
+  labs(x="Cohort year",y="Among-individual maturation probability CV", color="Age") + scale_x_continuous(breaks=c(seq(1980,2020,5)))
+timeCVs
+
+ageCVs <- ggplot(filtCVs2, aes(x=Age+xjitter, y=median, group=CohortYear, color=CohortYear)) + 
+  geom_line(lwd=1) + geom_point() +
+  geom_errorbar(aes(x=Age+xjitter, ymin=CI2.5, ymax=CI97.5, group=CohortYear), width=0.00) +
+  scale_color_viridis_c() + theme_classic() + #scale_y_continuous(limits=c(0,500), oob=scales::squish)+
+  labs(x="Age", y="Among-individual maturation probability CV", color="Cohort year") 
+ageCVs
+
+CVplot <- ggarrange(ageCVs, timeCVs, ncol=1, labels=c("a)","b)"), font.label=list(face="plain"),
+                       hjust=-3.8)
+CVplot
+ggsave("~/External Projects/Lake Michigan YEP FIE/Perch-FIE/Figures/PMRNCV_plot.png", 
+       plot=CVplot, width=3.5, height=5, units="in", dpi=500,
+       scale=1.5)
+
+
+
+#Sample size tables
+female_yep
+
+Ntable <- female_yep %>%
+  group_by(CohortYear, AGE) %>%
+  summarize(N=n(), n_imm = sum(MAT =="I"), n_mat=sum(MAT != "I"),
+            meanTL = mean(LENGTH), meanWr = mean(Wr, na.rm=T))
+Ntable
+print(Ntable, n=Inf)
+
+
+NCohorttable <- female_yep %>%
+  group_by(CohortYear) %>%
+  summarize(N=n(), n_imm = sum(MAT =="I"), n_mat=sum(MAT != "I"),
+            meanTL = mean(LENGTH), meanWr = mean(Wr, na.rm=T))
+NCohorttable
+print(NCohorttable, n=Inf)
+
+cohortplot <- NCohorttable %>%
+  pivot_longer(cols=c(n_imm, n_mat), names_to="Maturity")
+cohortplot
+ggplot(cohortplot, aes(x=CohortYear, y=value, fill=Maturity)) + 
+  geom_bar(stat="identity") + theme_minimal() + theme(axis.line=element_line(color="black")) + 
+  scale_fill_discrete(label=c("Immature","Mature")) + scale_y_continuous(breaks=seq(0,1000,100))

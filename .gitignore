@@ -1,6 +1,7 @@
 .Rproj.user
 .Rhistory
-.RData
+*.RData
+*.RDS
 .Ruserdata
 YEPFIE.RDS
 StJoeTemps
