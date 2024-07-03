@@ -1,5 +1,7 @@
 #TP and temp Summary
 library(dplyr)
+library(ggplot2)
+library(ggpubr)
 
 #Read Data
 TP <- read.csv("SouthernLM_TP.csv")
@@ -56,3 +58,12 @@ abiotic_plot
 
 ggsave(file="./Figures/abiotic.svg", plot=abiotic_plot, width=16, height=10)
 ggsave(file="./Figures/abiotic.png", plot=abiotic_plot, width=16, height=10)
+
+
+#Combine Abiotic and RW plot
+pred_plot <- ggarrange(abiotic_plot, rw_plot,
+                    ncol = 1, nrow = 2)
+pred_plot
+
+ggsave(file="./Figures/pred_plot.svg", plot=pred_plot, width=16, height=20)
+ggsave(file="./Figures/pred_plot.png", plot=pred_plot, width=16, height=20)
