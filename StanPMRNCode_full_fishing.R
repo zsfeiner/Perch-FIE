@@ -311,7 +311,7 @@ matCVs <- mats %>%
   filter(Age %in% c(2:5)) %>%
   mutate_all(makezero) %>%
   group_by(Cohort, Age) %>%
-  summarize_at(vars(ms), CV) %>%
+  summarize_at(vars(ms), var) %>%
   ungroup(.) %>%
   mutate(mean=rowMeans(x=select(., all_of(ms)), na.rm=T),
          median = apply(select(.,all_of(ms)), 1, median, na.rm=T),
@@ -336,12 +336,13 @@ timeCVs <- ggplot(filtCVs2, aes(x=CohortYear, y=median, color=factor(Age))) +
   geom_point(size=2) + geom_line(size=1.25) + 
   #scale_y_continuous(lim, oob=scales::squish) + 
   geom_errorbar(aes(x=CohortYear, ymin=CI2.5, ymax=CI97.5), width=0.0) + 
-  theme_classic() + scale_color_viridis_d() + 
+  theme_classic() + scale_color_viridis_d() + geom_smooth(se=F) + 
   labs(x="Cohort year",y="Among-individual maturation probability CV", color="Age") + scale_x_continuous(breaks=c(seq(1980,2020,5)))
 timeCVs
 
 ageCVs <- ggplot(filtCVs2, aes(x=Age+xjitter, y=median, group=CohortYear, color=CohortYear)) + 
-  geom_line(lwd=1) + geom_point() +
+  #geom_line(lwd=1) + 
+  geom_point() +
   geom_errorbar(aes(x=Age+xjitter, ymin=CI2.5, ymax=CI97.5, group=CohortYear), width=0.00) +
   scale_color_viridis_c() + theme_classic() + #scale_y_continuous(limits=c(0,500), oob=scales::squish)+
   labs(x="Age", y="Among-individual maturation probability CV", color="Cohort year") 
@@ -350,7 +351,7 @@ ageCVs
 CVplot <- ggarrange(ageCVs, timeCVs, ncol=1, labels=c("a)","b)"), font.label=list(face="plain"),
                        hjust=-3.8)
 CVplot
-ggsave("~/External Projects/Lake Michigan YEP FIE/Perch-FIE/Figures/PMRNCV_plot.png", 
+ggsave("~/External Projects/Lake Michigan YEP FIE/Perch-FIE/Figures/PMRNSD_plot.png", 
        plot=CVplot, width=3.5, height=5, units="in", dpi=500,
        scale=1.5)
 
@@ -380,3 +381,18 @@ cohortplot
 ggplot(cohortplot, aes(x=CohortYear, y=value, fill=Maturity)) + 
   geom_bar(stat="identity") + theme_minimal() + theme(axis.line=element_line(color="black")) + 
   scale_fill_discrete(label=c("Immature","Mature")) + scale_y_continuous(breaks=seq(0,1000,100))
+
+
+dim(mats)
+robustbase::colMedians(mats)
+new.w <- w %>%
+  filter(Age %in% c(2)) %>%
+  mutate(m=ifelse(m<0,0,m))
+ggplot(data=new.w, aes(x=m, group=Cohort, color=Cohort, after_stat(scaled))) + 
+  geom_density() + facet_wrap(~Age * Cohort)
+
+
+
+
+
+
