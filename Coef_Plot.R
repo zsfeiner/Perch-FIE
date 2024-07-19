@@ -56,15 +56,15 @@ beta_u <- data.frame(rstan::extract(fit_full_fishing,pars='u'))
 beta_u_1 <- list()
 
 #extract cohorts for each beta
-beta_u_1[[1]] <- beta_u[,seq(from = 1, to = 325, by = 9)]
-beta_u_1[[2]] <- beta_u[,seq(from = 2, to = 326, by = 9)]
-beta_u_1[[3]] <- beta_u[,seq(from = 3, to = 327, by = 9)]
-beta_u_1[[4]] <- beta_u[,seq(from = 4, to = 328, by = 9)]
-beta_u_1[[5]] <- beta_u[,seq(from = 5, to = 329, by = 9)]
-beta_u_1[[6]] <- beta_u[,seq(from = 6, to = 330, by = 9)]
-beta_u_1[[7]] <- beta_u[,seq(from = 7, to = 331, by = 9)]
-beta_u_1[[8]] <- beta_u[,seq(from = 8, to = 332, by = 9)]
-beta_u_1[[9]] <- beta_u[,seq(from = 9, to = 333, by = 9)]
+beta_u_1[[1]] <- beta_u[,seq(from = 1, to = 289, by = 8)]
+beta_u_1[[2]] <- beta_u[,seq(from = 2, to = 290, by = 8)]
+beta_u_1[[3]] <- beta_u[,seq(from = 3, to = 291, by = 8)]
+beta_u_1[[4]] <- beta_u[,seq(from = 4, to = 292, by = 8)]
+beta_u_1[[5]] <- beta_u[,seq(from = 5, to = 293, by = 8)]
+beta_u_1[[6]] <- beta_u[,seq(from = 6, to = 294, by = 8)]
+beta_u_1[[7]] <- beta_u[,seq(from = 7, to = 295, by = 8)]
+beta_u_1[[8]] <- beta_u[,seq(from = 8, to = 296, by = 8)]
+#beta_u_1[[9]] <- beta_u[,seq(from = 9, to = 333, by = 9)]
 
 #Add mean beta to each cohort effect
 cohort_beta_1 <- list()
@@ -76,25 +76,25 @@ cohort_beta_1[[5]] <- beta_u_1[[5]] + beta[,5]
 cohort_beta_1[[6]] <- beta_u_1[[6]] + beta[,6]
 cohort_beta_1[[7]] <- beta_u_1[[7]] + beta[,7]
 cohort_beta_1[[8]] <- beta_u_1[[8]] + beta[,8]
-cohort_beta_1[[9]] <- beta_u_1[[9]] + beta[,9]
+#cohort_beta_1[[9]] <- beta_u_1[[9]] + beta[,9]
 
 #Combine by column
 cohort_beta_all <- cbind(cohort_beta_1[[1]],cohort_beta_1[[2]],cohort_beta_1[[3]],cohort_beta_1[[4]],cohort_beta_1[[5]],
-                        cohort_beta_1[[6]],cohort_beta_1[[7]],cohort_beta_1[[8]],cohort_beta_1[[9]])
+                        cohort_beta_1[[6]],cohort_beta_1[[7]],cohort_beta_1[[8]])
 
 #Calcuate quantiles and add chort number
 annual_effects <- data.frame((colQuantiles(as.matrix(cohort_beta_all),probs=c(0.025,0.50,0.975))))
-annual_effects$cohort <- rep(seq(1979,2015,1),9)
+annual_effects$cohort <- rep(seq(1979,2015,1),8)
 
 #Add column of beta names
-covar_names <- c("Intercept","Age","Total Length","Relative Weight","Age * Total Length","Age * Relative Weight", "Total Phosphorus","Growing Degree Days","Commercial Fishing")
+covar_names <- c("Intercept","Age","Total Length","Relative Weight","Age * Total Length","Age * Relative Weight", "Total Phosphorus","Growing Degree Days")
 annual_effects$parm <- c(rep(covar_names[1],37),rep(covar_names[2],37),rep(covar_names[3],37),rep(covar_names[4],37),
-                        rep(covar_names[5],37),rep(covar_names[6],37),rep(covar_names[7],37),rep(covar_names[8],37),
-                        rep(covar_names[9],37))
+                        rep(covar_names[5],37),rep(covar_names[6],37),rep(covar_names[7],37),rep(covar_names[8],37))#,
+                        #rep(covar_names[9],37))
 
 #label quantiles and specify the order for facets
 names(annual_effects) =c("LCL","MED","UCL","Cohort","Param")
-level_order <- c("Intercept","Age","Total Length","Relative Weight","Commercial Fishing","Growing Degree Days", "Total Phosphorus","Age * Total Length","Age * Relative Weight")
+level_order <- c("Intercept","Age","Total Length","Relative Weight","Growing Degree Days", "Total Phosphorus","Age * Total Length","Age * Relative Weight")
 annual_effects <- annual_effects %>%
                   mutate(across(Param, factor, levels=level_order))
 
