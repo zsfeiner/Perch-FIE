@@ -174,7 +174,7 @@ inits_full_fishing <- function() {
 
 stanmatcode_full_fishing = stan_model(file = 'yep_fie_covar_full_fishing_removefishingslopes.stan')
 fit_full_fishing = sampling(stanmatcode_full_fishing, data=dat, init=inits_full_fishing, 
-                    iter=400, warmup=200, thin=1, chains=3, cores=3, #was 4000 and 2000
+                    iter=4000, warmup=2000, thin=1, chains=3, cores=3, #was 4000 and 2000
                     control=list(adapt_delta=0.90,max_treedepth=10) )
 saveRDS(fit_full_fishing,"YEPFIE_covar_enviro_full_fishing_removefishingslopes.RDS")
 
@@ -196,7 +196,7 @@ print(fit_full_fishing,pars=c('p[1251]','prev_p[1251]'))
 print(fit_full_fishing,pars=c('m[1251]'))
 
 
-trace_1<-stan_trace(fit_full,pars=c('beta','sigma_u','phi_mu','phi_sigma','gamma_mu','gamma_sigma','sigma'))
+trace_1<-stan_trace(fit_full_fishing,pars=c('beta','sigma_u','phi_mu','phi_sigma','gamma_mu','gamma_sigma','sigma'))
 ggsave(file="./Figures/App_traceplot.svg", plot=trace_1, width=16, height=10)
 ggsave(file="./Figures/App_traceplot.png", plot=trace_1, width=16, height=10)
 
