@@ -1,4 +1,7 @@
 ####Make new PMRN plot as age separated violin of posteriors
+#loadRDS
+
+fit_full_fishing <- readRDS("YEPFIE_covar_enviro_full_fishing_removefishingslopes.RDS") 
 
 m <- rstan::extract(fit_full_fishing,pars='m')$m
 dim(m)
@@ -147,6 +150,65 @@ ggplot(lps.long, aes(x=CohortYear, y=estimate, group=CohortYear, fill=factor(Age
 lps.long
 max(filter(lps.long, Age==2)$CohortYear)
 sum(sort(filter(lps.long, Age==2, CohortYear==1983)$estimate) < sort(filter(lps.long, Age==2, CohortYear==2014)$estimate), na.rm=T)
+
+
+#Look at overlap between posteriors of earliest, pre-fishing, and post-fishing last years
+#Create function to calculate posterior overlap and plot density plots by age and cohort year
+
+
+post_overlap  <- function(age, cohortyear) {
+  plotdat <- filter(lps.long, Age==age, CohortYear %in% cohortyear) %>%
+    mutate(fCohortYear = paste0("y",CohortYear)) %>%
+    group_by(fCohortYear) %>%
+    mutate(step = rep(1:18000))
+  
+  compdat <- plotdat %>%
+    pivot_wider(id_cols = c("Age","step"), names_from="fCohortYear", values_from="estimate")
+  
+  print(ggplot(plotdat, aes(x=estimate, color=fCohortYear)) +
+    geom_density(stat="density", na.rm=T, lwd=1) + xlim(c(0,500)) + theme_bw() + 
+    scale_color_viridis_d())
+  
+comptable <- tibble(expand.grid(cohortyear, cohortyear)) %>%
+  filter(Var1 < Var2) %>%
+  mutate(overlap = NA)
+
+for (i in 1:nrow(comptable)) {
+  comp <- tibble(x = filter(plotdat, CohortYear==comptable$Var1[i])$estimate, 
+                     y = filter(plotdat, CohortYear==comptable$Var2[i])$estimate) %>%
+    filter(complete.cases(.)) %>%
+    mutate(x=sort(x), y=rev(sort(y)))
+  
+  comptable$overlap[i] <- sum(comp$x > comp$y)/length(comp$x)
+
+}
+
+comptable <- comptable[order(comptable$Var1),]
+
+return(comptable)
+print(compplot)
+}
+
+age2overlaps <- post_overlap(age=2, cohortyear=c(1983,1996,2006,2014))
+age2overlaps
+
+age3overlaps <- post_overlap(age=3, cohortyear=c(1982,1996,2004,2013))
+age3overlaps
+
+age4overlaps <- post_overlap(age=4, cohortyear=c(1983,1998,2005,2012))
+age4overlaps
+
+age5overlaps <- post_overlap(age=5, cohortyear=c(1984,2001,2006,2011))
+age5overlaps
+
+
+plotdat %>%
+  dplyr::group_by(Cohort, Age, iter, fCohortYear) %>%
+  dplyr::summarise(n = dplyr::n(), .groups = "drop") %>%
+  dplyr::filter(n > 1L) 
+
+pivot_wider(plotdat, names_from="CohortYear", values_from="estimate")
+
 age2comp <- tibble(y1983 = filter(lps.long, Age==2, CohortYear==1983)$estimate, 
                      y2014 = filter(lps.long, Age==2, CohortYear==2014)$estimate) %>%
   filter(complete.cases(.)) %>%
@@ -158,3 +220,16 @@ ggplot(age2comp, aes(x=y1983)) +
   geom_density() + 
   geom_density(aes(x=y2014), color="red") + 
   xlim(c(0,400))
+
+age2comp_1983_1997 <- tibble(y1983 = filter(lps.long, Age==2, CohortYear==1983)$estimate, 
+                   y1997 = filter(lps.long, Age==2, CohortYear==1997)$estimate) %>%
+  filter(complete.cases(.)) %>%
+  mutate(y1983=sort(y1983), y1997=rev(sort(y2014)))
+age2comp
+with(age2comp, sum(y1983<y2014))
+
+ggplot(age2comp, aes(x=y1983)) + 
+  geom_density() + 
+  geom_density(aes(x=y2014), color="red") + 
+  xlim(c(0,400))
+
