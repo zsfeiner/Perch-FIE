@@ -68,7 +68,7 @@ timestart=Sys.time() #check time to run
 Lps <- mats %>%
   filter(Age %in% c(2:5)) %>%
   group_by(Cohort, Age) %>%
-  summarize(across(all_of(ms), ~midpoints(m=.x, TL.mm=TL.mm))) %>%
+  reframe(across(all_of(ms), ~midpoints(m=.x, TL.mm=TL.mm))) %>%
   mutate(Lp = rep(c("Lp50","Lp25",'Lp75'), n_distinct(Cohort, Age))) %>%
   ungroup(.) %>%
   mutate(mean=rowMeans(x=select(., all_of(ms)), na.rm=T),
@@ -92,7 +92,7 @@ filtdat <- filter(Lps, Lp=="Lp50",NAs < length(ms)*0.05, median < 600) %>%
 all.age.cohort <- filtdat %>% expand(Age, Cohort) %>% left_join(yearnames) %>% filter(Age %in% c(2:5))
 filtdat2 <- left_join(all.age.cohort, filtdat) %>% arrange(Cohort, Age) %>%
   group_by(Age) %>%
-  mutate(xjitter = sort(rnorm(n=n(), mean=0, sd=0.1)))
+  mutate(xjitter = sort(rnorm(n=n(), mean=0, sd=0.1))) 
 
 #Plot Lp50s with no more than 5% NAs
 timeplot <- ggplot(filtdat2, aes(x=CohortYear, y=median, color=factor(Age))) + 
@@ -165,9 +165,10 @@ post_overlap  <- function(age, cohortyear) {
   compdat <- plotdat %>%
     pivot_wider(id_cols = c("Age","step"), names_from="fCohortYear", values_from="estimate")
   
-  print(ggplot(plotdat, aes(x=estimate, color=fCohortYear)) +
+  postplot <- (ggplot(plotdat, aes(x=estimate, color=factor(CohortYear))) +
     geom_density(stat="density", na.rm=T, lwd=1) + xlim(c(0,500)) + theme_bw() + 
-    scale_color_viridis_d())
+    scale_color_viridis_d(guide=guide_legend(title="Cohort")) + xlab("Total length (mm)") + ylab("Density") +
+    ggtitle(paste0("    Age-",age)) + theme(plot.title=element_text(margin=margin(t=30,b=-30))))
   
 comptable <- tibble(expand.grid(cohortyear, cohortyear)) %>%
   filter(Var1 < Var2) %>%
@@ -185,8 +186,10 @@ for (i in 1:nrow(comptable)) {
 
 comptable <- comptable[order(comptable$Var1),]
 
-return(comptable)
-print(compplot)
+complist <- list(comptable, postplot)
+
+return(complist)
+
 }
 
 age2overlaps <- post_overlap(age=2, cohortyear=c(1983,1996,2006,2014))
@@ -201,35 +204,6 @@ age4overlaps
 age5overlaps <- post_overlap(age=5, cohortyear=c(1984,2001,2006,2011))
 age5overlaps
 
-
-plotdat %>%
-  dplyr::group_by(Cohort, Age, iter, fCohortYear) %>%
-  dplyr::summarise(n = dplyr::n(), .groups = "drop") %>%
-  dplyr::filter(n > 1L) 
-
-pivot_wider(plotdat, names_from="CohortYear", values_from="estimate")
-
-age2comp <- tibble(y1983 = filter(lps.long, Age==2, CohortYear==1983)$estimate, 
-                     y2014 = filter(lps.long, Age==2, CohortYear==2014)$estimate) %>%
-  filter(complete.cases(.)) %>%
-  mutate(y1983=sort(y1983), y2014=rev(sort(y2014)))
-age2comp
-with(age2comp, sum(y1983<y2014))
-
-ggplot(age2comp, aes(x=y1983)) + 
-  geom_density() + 
-  geom_density(aes(x=y2014), color="red") + 
-  xlim(c(0,400))
-
-age2comp_1983_1997 <- tibble(y1983 = filter(lps.long, Age==2, CohortYear==1983)$estimate, 
-                   y1997 = filter(lps.long, Age==2, CohortYear==1997)$estimate) %>%
-  filter(complete.cases(.)) %>%
-  mutate(y1983=sort(y1983), y1997=rev(sort(y2014)))
-age2comp
-with(age2comp, sum(y1983<y2014))
-
-ggplot(age2comp, aes(x=y1983)) + 
-  geom_density() + 
-  geom_density(aes(x=y2014), color="red") + 
-  xlim(c(0,400))
-
+test <- ggarrange(age2overlaps[[2]], age3overlaps[[2]], age4overlaps[[2]], age5overlaps[[2]], common.legend=F)
+test
+ggsave("./Figures/Supplement_OverlapPlots.png", test, dpi=500)
