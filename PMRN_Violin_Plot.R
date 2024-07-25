@@ -1,6 +1,9 @@
 ####Make new PMRN plot as age separated violin of posteriors
 #loadRDS
 
+library(tidyverse)
+library(ggplot2)
+
 fit_full_fishing <- readRDS("YEPFIE_covar_enviro_full_fishing_removefishingslopes.RDS") 
 
 m <- rstan::extract(fit_full_fishing,pars='m')$m
@@ -57,10 +60,6 @@ dim(mats)
 ms <- paste0("m",1:dim(m)[1]) #external vector of names for obs of m
 names(mats) <- c(paste0("m",1:dim(m)[1]), "TL.mm","Age","Cohort") #rename dataframe
 
-#library(progress) #attempted progress bar, couldn't figure it out
-#pb <- progress_bar$new(format = "[:bar] :current/:total (:percent) elapsed :elapsed eta :eta",
-#                            total = n_distinct(mats$Cohort, mats$Age))
-
 timestart=Sys.time() #check time to run
 
 #New and improved pipe to estimate and summarize midpoints using logistic regression
@@ -68,7 +67,7 @@ timestart=Sys.time() #check time to run
 Lps <- mats %>%
   filter(Age %in% c(2:5)) %>%
   group_by(Cohort, Age) %>%
-  reframe(across(all_of(ms), ~midpoints(m=.x, TL.mm=TL.mm))) %>%
+  summarize(across(all_of(ms), ~midpoints(m=.x, TL.mm=TL.mm))) %>%
   mutate(Lp = rep(c("Lp50","Lp25",'Lp75'), n_distinct(Cohort, Age))) %>%
   ungroup(.) %>%
   mutate(mean=rowMeans(x=select(., all_of(ms)), na.rm=T),
