@@ -100,7 +100,7 @@ female_yep <- left_join(female_yep, select(temps.summary, Year, GDD5Annual), by=
   rename("GDD5"="GDD5Annual") %>%
   left_join(select(mean_TP_byYear, Year, Mean), by=c("YEAR"="Year")) %>%
   rename("TP"="Mean") %>%
-  mutate(Fishing = ifelse(female_yep$Year <= 1996, 1, 0))
+  mutate(Fishing = ifelse(YEAR <= 1996, 1, 0))
 
 ######FOR NOW FILTER TO ENVIRONMENTAL DATA######
 #Not needed - no GDD NAs
@@ -144,7 +144,7 @@ X <- cbind(Age,TL.mm,RW,GDD5,TP,Fished)
 K <- ncol(X)
 Mat <- ifelse(female_yep$MAT=="I",0,1)
 nAbiotics <- nrow(abiotics)
-nFishing <- nrow(Fishing)
+#nFishing <- nrow(Fishing)
 
 
 #Create datalist
@@ -154,7 +154,7 @@ dat <- list('N'=nrow(female_yep), 'K'=K, 'Mat'=Mat, 'Age'=Age, 'TL'=TL.mm,
             'GDD5'=GDD5, 'mean_GDD5'=mean_GDD5, 'sd_GDD5'=sd_GDD5,
             'TP'=TP, 'mean_TP'=mean_TP, 'sd_TP'=sd_TP,
             'abiotics'=abiotics, 'Year'=Year, 'nAbiotics'=nAbiotics,
-            'fishing'=Fishing, 'nFishing'=nFishing, 'Fished'=Fished)
+            'Fished'=Fished)
 
 
 inits_full_fishing <- function() {
@@ -171,11 +171,11 @@ inits_full_fishing <- function() {
 }
 
 
-stanmatcode_full_fishing = stan_model(file = 'yep_fie_covar_full_fishing_removefishingslopes.stan')
+stanmatcode_full_fishing = stan_model(file = 'yep_fie_covar_revised_7.25.2024.stan')
 fit_full_fishing = sampling(stanmatcode_full_fishing, data=dat, init=inits_full_fishing, 
                     iter=4000, warmup=2000, thin=1, chains=3, cores=3, #was 4000 and 2000
                     control=list(adapt_delta=0.90,max_treedepth=10) )
-saveRDS(fit_full_fishing,"YEPFIE_covar_enviro_full_fishing_removefishingslopes.RDS")
+saveRDS(fit_full_fishing,"YEPFIE_covar_enviro_revised_7.25.2024.RDS")
 
 print(fit_full_fishing, pars=c('beta','sigma_u','phi_mu','gamma_mu','sigma'), digits=3, prob=c(0.025,0.5,0.975))
 print(fit_full_fishing, pars=c('beta'), digits=3, prob=c(0.025,0.5,0.975))
@@ -319,7 +319,7 @@ ggsave("~/External Projects/Lake Michigan YEP FIE/Perch-FIE/Figures/PMRN_plot.pn
        scale=1.5)
 
 
-save.image("YEP_PMRNrun_full_fishing.Rdata")
+save.image("YEP_PMRNrun_Revised_7.26.2024.Rdata")
 
 
 #Examine variance of Lp estimates over time

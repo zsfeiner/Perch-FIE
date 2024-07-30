@@ -88,10 +88,17 @@ filtdat <- filter(Lps, Lp=="Lp50",NAs < length(ms)*0.05, median < 600) %>%
   group_by(Age) %>%
   mutate(xjitter = sort(rnorm(n=n(), mean=0, sd=0.1)))
 
-all.age.cohort <- filtdat %>% expand(Age, Cohort) %>% left_join(yearnames) %>% filter(Age %in% c(2:5))
-filtdat2 <- left_join(all.age.cohort, filtdat) %>% arrange(Cohort, Age) %>%
+yearnames <- yearnames[order(yearnames$Cohort),]
+yearnames
+
+filtdat2 <- yearnames %>%
+  right_join(select(filtdat, CohortYear, Cohort, Age)) %>%
+  expand(Age, Cohort) %>%
+  left_join(yearnames) %>%
+  left_join(select(filtdat, -xjitter)) %>%
   group_by(Age) %>%
-  mutate(xjitter = sort(rnorm(n=n(), mean=0, sd=0.1))) 
+  mutate(xjitter = sort(rnorm(n=n(), mean=0, sd=0.1)))
+
 
 #Plot Lp50s with no more than 5% NAs
 timeplot <- ggplot(filtdat2, aes(x=CohortYear, y=median, color=factor(Age))) + 
@@ -100,16 +107,16 @@ timeplot <- ggplot(filtdat2, aes(x=CohortYear, y=median, color=factor(Age))) +
   geom_errorbar(aes(x=CohortYear, ymin=CI2.5, ymax=CI97.5), width=0.0) + 
   theme_classic() + scale_color_viridis_d() + 
   labs(x="Cohort year",y=bquote(Lp[50]), color="Age") + scale_x_continuous(breaks=c(seq(1980,2020,5)))
-
 timeplot
 
 ageplot <- ggplot(filtdat2, aes(x=Age+xjitter, y=median, group=CohortYear, color=CohortYear)) + 
   geom_line(lwd=1) + geom_point() +
   geom_errorbar(aes(x=Age+xjitter, ymin=CI2.5, ymax=CI97.5, group=CohortYear), width=0.00) +
-  scale_color_viridis_c() + theme_classic() + scale_y_continuous(limits=c(0,500), oob=scales::squish)+
-  labs(x="Age", y=bquote(Lp[50]), color="Cohort year") 
+  scale_color_viridis_c() + theme_classic(base_size=10) + scale_y_continuous(limits=c(0,500), oob=scales::squish)+
+  labs(x="Age", y=bquote(Lp[50]), color="Cohort") 
 ageplot
 
+ggsave("./Figures/RevisedAgePlot.png", ageplot, width=3.5, height=2.5, dpi=500, units="in", scale=1.5)
 
 #New age plot
 dim(mats)
@@ -133,28 +140,26 @@ lps.long
 
 ages <- c("2"="Age-2","3"="Age-3","4"="Age-4","5"="Age-5")
 
-ggplot(lps.long, aes(x=CohortYear, y=estimate, group=CohortYear, fill=factor(Age))) + 
+lps.violin <- ggplot(lps.long, aes(x=CohortYear, y=estimate, group=CohortYear, fill=factor(Age))) + 
   geom_violin(trim=T, scale="width", alpha=0.6) + 
   facet_wrap(~Age, labeller=as_labeller(ages)) + 
   ylim(c(0,500)) + 
   stat_summary(fun = median,
                fun.min = function(x) quantile(x, probs = 0.025),
-               fun.max = function(x) quantile(x, probs = 0.975), size = 0.5) + 
-  theme_bw() + #theme(panel.grid.major=element_blank(),panel.grid.minor=element_blank(),
-                  #   legend.position="none") + 
-  scale_fill_manual(values=viridis::viridis(n=4)) + 
-  labs(x="Cohort", y="Length (mm)") + 
+               fun.max = function(x) quantile(x, probs = 0.975), size = 0.1) + 
+  geom_vline(aes(xintercept=1996.5), lty=2) + 
+  theme_bw() + theme(panel.grid.major=element_blank(),panel.grid.minor=element_blank()) + 
+  scale_fill_manual(values=viridis::viridis(n=4), name="Age") + 
+  labs(x="Cohort", y=bquote(Lp[50])) + 
   scale_x_continuous(breaks=seq(1900,2020,5))
 
-lps.long
-max(filter(lps.long, Age==2)$CohortYear)
-sum(sort(filter(lps.long, Age==2, CohortYear==1983)$estimate) < sort(filter(lps.long, Age==2, CohortYear==2014)$estimate), na.rm=T)
+lps.violin
+
+ggsave("./Figures/PMRN_violin.png", lps.violin, dpi=500, width=7, height=5, units="in", scale=1.25)
 
 
 #Look at overlap between posteriors of earliest, pre-fishing, and post-fishing last years
 #Create function to calculate posterior overlap and plot density plots by age and cohort year
-
-
 post_overlap  <- function(age, cohortyear) {
   plotdat <- filter(lps.long, Age==age, CohortYear %in% cohortyear) %>%
     mutate(fCohortYear = paste0("y",CohortYear)) %>%
@@ -191,18 +196,46 @@ return(complist)
 
 }
 
-age2overlaps <- post_overlap(age=2, cohortyear=c(1983,1996,2006,2014))
+print(filter(filtdat2, Age==2), n=Inf)
+age2overlaps <- post_overlap(age=2, cohortyear=c(1984, 1996, 2014))#filter(filtdat, Age==2, !is.na(Lp))$CohortYear)
 age2overlaps
 
-age3overlaps <- post_overlap(age=3, cohortyear=c(1982,1996,2004,2013))
+print(filter(filtdat2, Age==3), n=Inf)
+age3overlaps <- post_overlap(age=3, cohortyear=c(1982,1996,2004, 2013))
 age3overlaps
 
-age4overlaps <- post_overlap(age=4, cohortyear=c(1983,1998,2005,2012))
+print(filter(filtdat2, Age==4), n=Inf)
+age4overlaps <- post_overlap(age=4, cohortyear=c(1985, 1998, 2012)) #filter(filtdat, Age==4, !is.na(Lp))$CohortYear) #1985, 1998, 2012
 age4overlaps
 
-age5overlaps <- post_overlap(age=5, cohortyear=c(1984,2001,2006,2011))
+print(filter(filtdat2, Age==5), n=Inf)
+age5overlaps <- post_overlap(age=5, cohortyear=c(1984,2001,2011)) #filter(filtdat, Age==5, !is.na(Lp))$CohortYear) #1984, 2001, 2011
 age5overlaps
 
-test <- ggarrange(age2overlaps[[2]], age3overlaps[[2]], age4overlaps[[2]], age5overlaps[[2]], common.legend=F)
+bind_rows(list(age2overlaps[[1]],age3overlaps[[1]],age4overlaps[[1]],age5overlaps[[1]]), .id="Age") %>%
+  mutate(Age = as.numeric(Age)+1)
+
+
+test <- ggpubr::ggarrange(age2overlaps[[2]], age3overlaps[[2]], age4overlaps[[2]], age5overlaps[[2]], common.legend=F)
 test
-ggsave("./Figures/Supplement_OverlapPlots.png", test, dpi=500)
+ggsave("./Figures/Supplement_OverlapPlots.png", test, dpi=500, scale=1.5)
+
+#gam to see trends easier?
+age2gam <- mgcv::gam(median ~ s(CohortYear, bs="cs"), data=filter(filtdat2, Age==2))
+plot(age2gam)
+summary(age2gam)
+
+age3gam <- mgcv::gam(median ~ s(CohortYear, bs="cs"), data=filter(filtdat2, Age==3))
+plot(age3gam)
+summary(age3gam)
+
+age4gam <- mgcv::gam(median ~ s(CohortYear, bs="cs"), data=filter(filtdat2, Age==4))
+plot(age4gam)
+summary(age4gam)
+
+age5gam <- mgcv::gam(median ~ s(CohortYear, bs="cs", k=8), data=filter(filtdat2, Age==5))
+plot(age5gam)
+mgcv::gam.check(age5gam)
+summary(age5gam)
+
+
