@@ -61,6 +61,16 @@ table(is.na(female_yep$WEIGHT))
 female_yep$Ws <- 10^(-5.386 + 3.230 * log10(female_yep$LENGTH))
 female_yep$Wr <- female_yep$WEIGHT / female_yep$Ws * 100
 
+wr.mean <- female_yep %>% 
+  group_by(YEAR) %>%
+  summarize(meanwr = mean(Wr, na.rm=T))
+
+summary(lm(meanwr~YEAR, data=wr.mean))
+summary(lm(Wr ~ YEAR, data=female_yep))
+summary(lm(Wr ~ LENGTH, data=female_yep))
+summary(lm(Wr ~ AGE, data=female_yep))
+
+
 #Add environmental variables - use mean TP and annual GDD5
 mean_TP_byYear
 temps.summary
@@ -199,7 +209,25 @@ trace_1<-stan_trace(fit_full_fishing,pars=c('beta','sigma_u','phi_mu','phi_sigma
 ggsave(file="./Figures/App_traceplot.svg", plot=trace_1, width=16, height=10)
 ggsave(file="./Figures/App_traceplot.png", plot=trace_1, width=16, height=10)
 
+#Fit the model in glmer to compare quickly
+as.data.frame(dat[c("Age","TL","RW","GDD5","TP","Fished","Mat")])
 
+mod.dat <- as_tibble(dat[c("Age","TL","RW","GDD5","TP","Fished","Mat", "Cohort")])
+mod.dat$Cohort <- as.factor(mod.dat$Cohort)
+
+mod1 <- lme4::glmer(Mat ~ (1|Cohort) + scale(Age)*scale(TL) + scale(RW) + scale(RW):scale(Age) + scale(RW):scale(TL) + scale(TP) + scale(GDD5) + Fished, data=mod.dat, family="binomial")
+mod2 <- lme4::glmer(Mat ~ (1|Cohort) + scale(Age)*scale(TL) + scale(RW) + scale(RW):scale(Age) + scale(TP) + scale(GDD5) + Fished, data=mod.dat, family="binomial")
+summary(mod1)
+summary(mod2)
+BIC(mod1,mod2)
+
+AIC(mod1) - AIC(mod2)
+BIC(mod1) - BIC(mod2)
+
+MuMIn::r.squaredGLMM(mod1)
+MuMIn::r.squaredGLMM(mod2)
+pROC::roc(response=Mat, predictor=predict(mod1, type="response"))
+pROC::roc(response=Mat, predictor=predict(mod2, type="response"))
 
 m <- rstan::extract(fit_full_fishing,pars='m')$m
 dim(m)
