@@ -28,20 +28,36 @@ plot(LENGTH ~ AGE, data=filter(female_yep, AGE<=6))
 
 mod1 <- lm(LENGTH ~ AGE, data=filter(female_yep, AGE<=6))
 mod2 <- lm(LENGTH ~ log(AGE), data=filter(female_yep, AGE<=6))
-mod3 <- nls(LENGTH ~ exp(phi + gamma * log(AGE)), data=filter(female_yep, AGE <= 6),
-            start=list(phi=1, gamma=0))
 mod4 <- nls(LENGTH ~ Linf * (1-exp(-k*(AGE-t0))), data=filter(female_yep, AGE <= 6),
             start=list(Linf=300, k=0.2, t0=0))
-AIC(mod1, mod2, mod3, mod4)
+AIC(mod1, mod2, mod4)
+summary(mod2)
+summary(mod4)
 
-plot(LENGTH ~ AGE, data=filter(female_yep, AGE<=6))
-lines(predict(mod1, newdata=list(AGE=c(0,1,2,3,4,5,6))) ~ c(0:6), col="red")
-lines(predict(mod2, newdata=list(AGE=c(0,1,2,3,4,5,6))) ~ c(0:6), col="green")
-lines(predict(mod3, newdata=list(AGE=c(0,1,2,3,4,5,6))) ~ c(0:6), col="blue")
-lines(predict(mod4, newdata=list(AGE=c(0,1,2,3,4,5,6))) ~ c(0:6), col="purple")
+sqrt(mean((female_yep$LENGTH[female_yep$AGE<=6] - predict(mod1))^2))
+sqrt(mean((female_yep$LENGTH[female_yep$AGE<=6] - predict(mod2))^2))
+sqrt(mean((female_yep$LENGTH[female_yep$AGE<=6] - predict(mod4))^2))
 
-#Use log(age) model
+linecolors <- c("Linear: AIC = 46874, RMSE = 39.51"="blue",
+                "Linear-log: AIC = 46541, RMSE = 38.10" = "red",
+                "von Bertalanffy: AIC = 46512, RMSE = 37.97" = "green")
 
+growth_model_plot <- ggplot(filter(female_yep, AGE<=6), aes(x=AGE, y=LENGTH)) +
+  geom_point() + 
+  geom_smooth(method="lm", se=F, lwd=2, aes(color="Linear: AIC = 46874, RMSE = 39.51")) + 
+  geom_smooth(method="lm", formula="y~log(x)", se=F, lwd=2, aes(color="Linear-log: AIC = 46541, RMSE = 38.10")) + 
+  geom_smooth(method="nls", 
+              formula="y~Linf * (1-exp(-k*(x-t0)))", 
+              method.args=list(start=c(Linf=300, k=0.2, t0=0)), se=F, lwd=2,
+              aes(color="von Bertalanffy: AIC = 46512, RMSE = 37.97")) + 
+  theme_classic() + labs(y="Total length (mm)", x="Age", color="Legend") + scale_color_manual(name="Model",values=linecolors) + 
+  theme(legend.position=c(0.75,0.1), legend.text=element_text(size=14), legend.title=element_text(size=14),
+        axis.title=element_text(size=14), axis.text=element_text(size=12))
+
+ggsave(file="./RevisedFigures/GrowthModelPlot.png", plot=growth_model_plot, width=12, height=10)
+
+
+#Use log(age) model - similar fits, simpler implementation
 
 #Length/Weight
 #Slow way of getting missing weight, only 6 NA's so it doesn't take too long
@@ -70,22 +86,25 @@ summary(lm(Wr ~ YEAR, data=female_yep))
 summary(lm(Wr ~ LENGTH, data=female_yep))
 summary(lm(Wr ~ AGE, data=female_yep))
 
-wrmod0 <- (lm(Wr~factor(Cohort)*AGE*LENGTH, data=female_yep))
-wrmod1 <- (lm(Wr~factor(Cohort):AGE + factor(Cohort):LENGTH + factor(Cohort):AGE:LENGTH + factor(Cohort), data=female_yep))
-
+#female_yep$Cohort <- factor(female_yep$Cohort)
+wrmod0 <- (lm(Wr~factor(Cohort)*AGE, data=female_yep))
+wrmod1 <- (lm(Wr~factor(Cohort):AGE + factor(Cohort):AGE:LENGTH + factor(Cohort), data=female_yep))
+wrmod2 <- lmerTest::lmer(Wr ~ (1+LENGTH*AGE|Cohort), data=female_yep)
 AIC(wrmod0, wrmod1)
 
 summary(wrmod1)
 
 ggplot(female_yep, aes(x=AGE, y=Wr)) +
   geom_point() + 
-  geom_line(aes(x=AGE, y=predict(wrmod)), color="red") + 
+  geom_line(aes(x=AGE, y=predict(wrmod1)), color="red") + 
   facet_wrap(~Cohort, scales="free")
 
 plot(Wr ~ LENGTH, data=female_yep)
 plot(Wr ~ AGE, data=female_yep)
 plot(Wr ~ Cohort, data=female_yep)
 plot(Wr ~ YEAR, data=female_yep)
+
+#Instead calculate cohort-age means
 
 
 #Add environmental variables - use mean TP and annual GDD5
@@ -191,28 +210,45 @@ inits_full_fishing <- function() {
   phi_sigma <- runif(1,0.5,1)
   gamma_mu <- rnorm(1,100,0.05)
   gamma_sigma <- runif(1,0.5,2)
-  sigma <- runif(1,1,10)
+  omega1 <- rnorm(nCohorts,0,1)
+  omega2 <- rnorm(nCohorts,0,1)
+  omega3 <- rnorm(nCohorts,0,1)
+  omega4 <- rnorm(nCohorts,0,1)
+  zeta <- runif(1,0.5,2)
+  tau <- runif(1,1,10)
   z_u <- matrix(rnorm(8*nCohorts,0,0.5),nrow=8,ncol=nCohorts)
-  init <- list("beta"=beta, "sigma_u"=sigma_u, "phi_mu"=phi_mu, "phi_sigma"=phi_sigma, "gamma_mu"=gamma_mu, "gamma_sigma"=gamma_sigma, "sigma"=sigma, "z_u"=z_u)
+  init <- list("beta"=beta, "sigma_u"=sigma_u, 
+               "phi_mu"=phi_mu, "phi_sigma"=phi_sigma, "gamma_mu"=gamma_mu, "gamma_sigma"=gamma_sigma,
+               "omega1"=omega1, "omega2"=omega2,"omega3"=omega3,"omega4"=omega4,"zeta"=zeta,
+               "tau"=tau, "z_u"=z_u)
   return(init)
 }
 
+inits_full_fishing()
 
-stanmatcode_full_fishing = stan_model(file = 'yep_fie_covar_revised_7.25.2024.stan')
+stanmatcode_full_fishing = stan_model(file = 'yep_fie_covar_revised_11.27.2024.stan')
 fit_full_fishing = sampling(stanmatcode_full_fishing, data=dat, init=inits_full_fishing, 
                     iter=4000, warmup=2000, thin=1, chains=3, cores=3, #was 4000 and 2000
                     control=list(adapt_delta=0.90,max_treedepth=10) )
-saveRDS(fit_full_fishing,"YEPFIE_covar_enviro_revised_7.25.2024.RDS")
 
-print(fit_full_fishing, pars=c('beta','sigma_u','phi_mu','gamma_mu','sigma'), digits=3, prob=c(0.025,0.5,0.975))
+saveRDS(fit_full_fishing,"YEPFIE_covar_enviro_revised_12.2.2024.RDS")
+
+print(fit_full_fishing, pars=c('beta','sigma_u','phi_mu','gamma_mu','tau'), digits=3, prob=c(0.025,0.5,0.975))
 print(fit_full_fishing, pars=c('beta'), digits=3, prob=c(0.025,0.5,0.975))
 
 print(fit_full_fishing, pars=c('m'), digits=3, prob=c(0.025,0.5,0.975))
 print(fit_full_fishing, pars=c('s'), digits=3, prob=c(0.025,0.5,0.975))
 
+stan_trace(fit_full_fishing,pars=c('omega1'))
+stan_trace(fit_full_fishing,pars=c('omega2'))
+stan_trace(fit_full_fishing,pars=c('omega3'))
+stan_trace(fit_full_fishing,pars=c('omega4'))
+stan_trace(fit_full_fishing,pars=c('zeta'))
 stan_trace(fit_full_fishing,pars=c('p[1]','p[2]','p[3]','p[4]','p[5]','p[6]'))
 stan_trace(fit_full_fishing,pars=c('prev_p[1]','prev_p[2]','prev_p[3]','prev_p[4]','prev_p[5]','prev_p[6]'))
 stan_trace(fit_full_fishing,pars=c('s[1]','s[2]','s[3]','s[4]','s[5]','s[6]'))
+stan_trace(fit_full_fishing,pars=c('prev_sc_wr[1]','prev_sc_wr[2]','prev_sc_wr[3]','prev_sc_wr[4]','prev_sc_wr[5]','prev_sc_wr[6]'))
+stan_trace(fit_full_fishing,pars=c('wr_inc[1]','wr_inc[2]','wr_inc[3]','wr_inc[4]','wr_inc[5]','wr_inc[6]'))
 stan_trace(fit_full_fishing,pars=c('m[1]','m[2]','m[3]','m[4]','m[5]','m[6]'))
 stan_trace(fit_full_fishing,pars=c('beta','gamma_mu','phi_mu'))
 stan_trace(fit_full_fishing,pars=c('L_u'))
@@ -222,9 +258,37 @@ print(fit_full_fishing,pars=c('p[1251]','prev_p[1251]'))
 print(fit_full_fishing,pars=c('m[1251]'))
 
 
-trace_1<-stan_trace(fit_full_fishing,pars=c('beta','sigma_u','phi_mu','phi_sigma','gamma_mu','gamma_sigma','sigma'))
-ggsave(file="./Figures/App_traceplot.svg", plot=trace_1, width=16, height=10)
-ggsave(file="./Figures/App_traceplot.png", plot=trace_1, width=16, height=10)
+mat_trace<-stan_trace(fit_full_fishing,pars=c('beta','sigma_u'))
+mat_trace
+ggsave(file="./RevisedFigures/MatModelTraceplot.png", plot=mat_trace, width=16, height=10)
+
+trace_growth_phi <- stan_trace(fit_full_fishing, pars=c('phi'))
+trace_growth_phi
+ggsave(file="./RevisedFigures/Growth_Phi_Traceplot.png", plot=trace_growth_phi, width=12, height=10)
+
+trace_growth_gamma <- stan_trace(fit_full_fishing, pars=c('gamma'))
+trace_growth_gamma
+ggsave(file="./RevisedFigures/Growth_Gamma_Traceplot.png", plot=trace_growth_gamma, width=12, height=10)
+trace_growth_hyper <- stan_trace(fit_full_fishing, pars=c("phi_mu","phi_sigma","gamma_mu","gamma_sigma","tau"), ncol=2)
+trace_growth_hyper
+ggsave(file="./RevisedFigures/Growth_hyper_Traceplot.png", plot=trace_growth_hyper, width=12, height=10)
+
+trace_cond_omega1 <- stan_trace(fit_full_fishing, pars=c("omega1", "zeta"))
+trace_cond_omega1
+ggsave(file="./RevisedFigures/Cond_omega1_Traceplot.png", plot=trace_cond_omega1, width=12, height=10)
+
+trace_cond_omega2 <- stan_trace(fit_full_fishing, pars=c("omega2"))
+trace_cond_omega2
+ggsave(file="./RevisedFigures/Cond_omega2_Traceplot.png", plot=trace_cond_omega1, width=12, height=10)
+
+trace_cond_omega3 <- stan_trace(fit_full_fishing, pars=c("omega3"))
+trace_cond_omega3
+ggsave(file="./RevisedFigures/Cond_omega3_Traceplot.png", plot=trace_cond_omega1, width=12, height=10)
+
+trace_cond_omega4 <- stan_trace(fit_full_fishing, pars=c("omega4"))
+trace_cond_omega4
+ggsave(file="./RevisedFigures/Cond_omega4_Traceplot.png", plot=trace_cond_omega1, width=12, height=10)
+
 
 #Fit the model in glmer to compare quickly
 as.data.frame(dat[c("Age","TL","RW","GDD5","TP","Fished","Mat")])
@@ -337,6 +401,8 @@ filtdat2 <- left_join(all.age.cohort, filtdat) %>% arrange(Cohort, Age) %>%
   group_by(Age) %>%
   mutate(xjitter = sort(rnorm(n=n(), mean=0, sd=0.1)))
 
+filtdat2
+
 #Plot Lp50s with no more than 5% NAs
 timeplot <- ggplot(filtdat2, aes(x=CohortYear, y=median, color=factor(Age))) + 
   geom_point(size=2) + geom_line(size=1.25) + 
@@ -447,10 +513,11 @@ print(NCohorttable, n=Inf)
 cohortplot <- NCohorttable %>%
   pivot_longer(cols=c(n_imm, n_mat), names_to="Maturity")
 cohortplot
-ggplot(cohortplot, aes(x=CohortYear, y=value, fill=Maturity)) + 
+cohortmatplot <- ggplot(cohortplot, aes(x=CohortYear, y=value, fill=Maturity)) + 
   geom_bar(stat="identity") + theme_minimal() + theme(axis.line=element_line(color="black")) + 
-  scale_fill_discrete(label=c("Immature","Mature")) + scale_y_continuous(breaks=seq(0,1000,100))
-
+  scale_fill_discrete(label=c("Immature","Mature")) + scale_y_continuous(breaks=seq(0,1000,100)) + 
+  ylab("Number") + xlab("Cohort")
+ggsave(file="./RevisedFigures/CohortMaturityPlot.png", plot=cohortmatplot, width=8, height=6)
 
 dim(mats)
 robustbase::colMedians(mats)

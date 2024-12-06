@@ -61,7 +61,15 @@ parameters {
   real<lower=0> phi_sigma;
   real gamma_mu;
   real<lower=0> gamma_sigma;
-  real<lower=0> sigma;    //Error, lower limit zero
+  real<lower=0> tau;    //Error, lower limit zero
+  
+  //Condition parameters
+  vector[nCohorts] omega1;  //Coefficient vector of length nCohorts - intercept
+  vector[nCohorts] omega2;  //Coefficient vector of length nCohorts - age effect
+  vector[nCohorts] omega3;  //Coefficient vector of length nCohorts - length effect
+  vector[nCohorts] omega4;  //Coefficient vector of length nCohorts - age*length effect
+  real <lower=0> zeta;  //Error, lower limit zero
+  
 }
 
 transformed parameters {
@@ -74,6 +82,7 @@ transformed parameters {
 model {
   real mu[N];  //Maturation
   vector[N] y;  //Growth
+  vector[N] w;  //Condition
   
   //Priors
   //Maturation
@@ -91,7 +100,14 @@ model {
   gamma_mu ~ normal(100,20);
   gamma_sigma ~ cauchy(0,5);
   
-  sigma ~ cauchy(0,5);
+  //Condition
+  omega1 ~ normal(0,1); 
+  omega2 ~ normal(0,1); 
+  omega3 ~ normal(0,1); 
+  omega4 ~ normal(0,1); 
+  zeta ~ cauchy(0,5);
+  
+  tau ~ cauchy(0,5);
   
   for (i in 1:N) {
     //Maturation
@@ -107,11 +123,15 @@ model {
  
     //Growth
     y[i] = phi[Cohort[i]] + gamma[Cohort[i]] * log(Age[i]);
+    
+    //Condition
+    w[i] = omega1[Cohort[i]] + omega2[Cohort[i]]*Age[i] + omega3[Cohort[i]]*TL[i] + omega4[Cohort[i]]*Age[i]*TL[i];
   
   }
   
   Mat ~ bernoulli_logit(mu);  //Maturation
-  TL ~ normal(y, sigma);  //Growth
+  TL ~ normal(y, tau);  //Growth
+  RW ~ normal(w, zeta); //Condition
   
 
 }
@@ -120,6 +140,9 @@ model {
 generated quantities {
   vector[N] s;
   vector[N] inc;
+  //vector[N] prev_wr;
+  vector[N] wr_inc;
+  vector[N] prev_sc_wr;
   vector<lower=0,upper=1>[N] p;
   vector<lower=0,upper=1>[N] prev_p;
   vector[N] m;
@@ -136,10 +159,17 @@ generated quantities {
       if(Age[i] == 1) {
         inc[i] = 0;
         s[i] = (0 - mean_TL) / sd_TL;
+        wr_inc[i] = 0;
+        //prev_wr[i] = 0;
+        prev_sc_wr[i] = (0 - mean_RW) / sd_RW;
       }
       else {
         inc[i] = (phi[Cohort[i]] + gamma[Cohort[i]] * log(Age[i])) - (phi[Cohort[i]] + gamma[Cohort[i]] * log(Age[i]-1));
         s[i] = ((TL[i] - inc[i]) - mean_TL) / sd_TL;
+        
+        wr_inc[i] = (omega1[Cohort[i]] + omega2[Cohort[i]]*Age[i] + omega3[Cohort[i]]*TL[i] + omega4[Cohort[i]]*Age[i]*TL[i]) - (omega1[Cohort[i]] + omega2[Cohort[i]]*(Age[i]-1) + omega3[Cohort[i]]*(TL[i]-inc[i]) + omega4[Cohort[i]]*(Age[i]-1)*(TL[i]-inc[i]));
+        //prev_wr[i] = omega1[Cohort[i]] + omega2[Cohort[i]]*(Age[i]-1) + omega3[Cohort[i]]*(TL[i]-inc[i]) + omega4[Cohort[i]]*(Age[i]-1)*(TL[i]-inc[i]);
+        prev_sc_wr[i] = ((RW[i] - wr_inc[i]) - mean_RW) / sd_RW;
       }
       
       p[i] = inv_logit((beta[1] + u[1,Cohort[i]]) + 
@@ -155,9 +185,9 @@ generated quantities {
       prev_p[i] = inv_logit((beta[1] + u[1,Cohort[i]]) + 
       (beta[2] + u[2,Cohort[i]]) * (Age[i] - 1) +
       (beta[3] + u[3,Cohort[i]]) * s[i] +
-      (beta[4] + u[4,Cohort[i]]) * sc_RW[i] +               //Do we assume relative weight was the same last year? ZF - yeesh, I guess?
+      (beta[4] + u[4,Cohort[i]]) * prev_sc_wr[i] +               //Use modeled Wr from previous year and length
       (beta[5] + u[5,Cohort[i]]) * (Age[i] - 1) * s[i] +
-      (beta[6] + u[6,Cohort[i]]) * (Age[i] - 1) * sc_RW[i] +
+      (beta[6] + u[6,Cohort[i]]) * (Age[i] - 1) * prev_sc_wr[i] +
       (beta[7] + u[7,Cohort[i]]) * sc_abiotics[Year[i],3] +    // GDD from previous year
       (beta[8] + u[8,Cohort[i]]) * sc_abiotics[Year[i],4] +    // TP from previous year
       beta[9] * sc_abiotics[Year[i],5]);    // Fishing from previous year

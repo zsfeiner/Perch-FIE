@@ -4,7 +4,7 @@
 library(tidyverse)
 library(ggplot2)
 
-fit_full_fishing <- readRDS("YEPFIE_covar_enviro_full_fishing_removefishingslopes.RDS") 
+#fit_full_fishing <- readRDS("YEPFIE_covar_enviro_full_fishing_removefishingslopes.RDS") 
 
 m <- rstan::extract(fit_full_fishing,pars='m')$m
 dim(m)
@@ -116,7 +116,7 @@ ageplot <- ggplot(filtdat2, aes(x=Age+xjitter, y=median, group=CohortYear, color
   labs(x="Age", y=bquote(Lp[50]), color="Cohort") 
 ageplot
 
-ggsave("./Figures/RevisedAgePlot.png", ageplot, width=3.5, height=2.5, dpi=500, units="in", scale=1.5)
+ggsave("./RevisedFigures/RevisedAgePlot.png", ageplot, width=3.5, height=2.5, dpi=500, units="in", scale=1.5)
 
 #New age plot
 dim(mats)
@@ -155,7 +155,7 @@ lps.violin <- ggplot(lps.long, aes(x=CohortYear, y=estimate, group=CohortYear, f
 
 lps.violin
 
-ggsave("./Figures/PMRN_violin.png", lps.violin, dpi=500, width=7, height=5, units="in", scale=1.25)
+ggsave("./RevisedFigures/PMRN_violin.png", lps.violin, dpi=500, width=7, height=5, units="in", scale=1.25)
 
 
 #Look at overlap between posteriors of earliest, pre-fishing, and post-fishing last years
@@ -196,12 +196,13 @@ return(complist)
 
 }
 
+
 print(filter(filtdat2, Age==2), n=Inf)
 age2overlaps <- post_overlap(age=2, cohortyear=c(1984, 1996, 2014))#filter(filtdat, Age==2, !is.na(Lp))$CohortYear)
 age2overlaps
 
 print(filter(filtdat2, Age==3), n=Inf)
-age3overlaps <- post_overlap(age=3, cohortyear=c(1982,1996,2004, 2013))
+age3overlaps <- post_overlap(age=3, cohortyear=c(1982,1996,2013))
 age3overlaps
 
 print(filter(filtdat2, Age==4), n=Inf)
@@ -218,7 +219,7 @@ bind_rows(list(age2overlaps[[1]],age3overlaps[[1]],age4overlaps[[1]],age5overlap
 
 test <- ggpubr::ggarrange(age2overlaps[[2]], age3overlaps[[2]], age4overlaps[[2]], age5overlaps[[2]], common.legend=F)
 test
-ggsave("./Figures/Supplement_OverlapPlots.png", test, dpi=500, scale=1.5)
+ggsave("./RevisedFigures/Supplement_OverlapPlots.png", test, dpi=500, scale=1.5)
 
 #gam to see trends easier?
 age2gam <- mgcv::gam(median ~ s(CohortYear, bs="cs"), data=filter(filtdat2, Age==2))

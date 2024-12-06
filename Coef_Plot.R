@@ -47,8 +47,8 @@ MargCoefPlot<-(ggplot(data=beta_long,aes(x=factor(Coefficient,level=level_order)
 )
 MargCoefPlot
 
-ggsave(file="./Figures/Marg_coef.svg", plot=MargCoefPlot, width=15, height=10)
-ggsave(file="./Figures/Marg_coef.png", plot=MargCoefPlot, width=15, height=10)
+ggsave(file="./RevisedFigures/Marg_coef.svg", plot=MargCoefPlot, width=15, height=10)
+ggsave(file="./RevisedFigures/Marg_coef.png", plot=MargCoefPlot, width=15, height=10)
 
 
 ##Cohort effects
@@ -124,5 +124,5 @@ CoefPlot_subset<-(ggplot(data=annual_effects,aes(x=Cohort,y=MED))+
 )
 CoefPlot_subset
 
-ggsave(file="./Figures/Coef_By_Cohort.svg", plot=CoefPlot_subset, width=14, height=12)
-ggsave(file="./Figures/Coef_By_Cohort.png", plot=CoefPlot_subset, width=14, height=12)
+ggsave(file="./RevisedFigures/Coef_By_Cohort.svg", plot=CoefPlot_subset, width=14, height=12)
+ggsave(file="./RevisedFigures/Coef_By_Cohort.png", plot=CoefPlot_subset, width=14, height=12)
