@@ -1,2 +1,2 @@
 # Perch-FIE
-Maturation modeling of yellow perch in southern Lake Michigan
+Maturation modeling of yellow perch in southern Lake Michigan.  This includes all data used in PMRN modeling and results of Bayesian PMRN model run saved as .csv and .RDS files respectively (see Data) and all scripts to perform PMRN modeling (StanPMRNCode_full_fishing_Revised.R and yep_fie_pmrn_revised.stan), summarize data, and plot and evaluate results (see Scripts).  These data and scripts should reproduce results published in Feiner, ZS, JC Doll, BD Dickinson, and MR Christie. 2025. Hierarchical multi-dimensional maturation modeling to isolate the effects of commercial closure on a Great Lakes fishery. Evolutionary Applications.
