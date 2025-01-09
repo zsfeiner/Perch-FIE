@@ -1,6 +1,13 @@
+##This code will take the RDS created from Stan PMRN modeling and create violin plots of the effects of explanatory variables
+#as well as timeseries of the cohort random effects for each random variable
+#-ZS Feiner, 1/9/2025
+
 library(tidyr)
 library(ggplot2)
 library(matrixStats)
+
+#Load RDS if needed
+fit_full_fishing <- readRDS("./Data/YEPFIE_covar_enviro_revised_12.2.2024.RDS") 
 
 #Coefficient plot
 
@@ -47,6 +54,7 @@ MargCoefPlot<-(ggplot(data=beta_long,aes(x=factor(Coefficient,level=level_order)
 )
 MargCoefPlot
 
+#Save figure
 ggsave(file="./RevisedFigures/Marg_coef.svg", plot=MargCoefPlot, width=15, height=10)
 ggsave(file="./RevisedFigures/Marg_coef.png", plot=MargCoefPlot, width=15, height=10)
 
@@ -124,5 +132,6 @@ CoefPlot_subset<-(ggplot(data=annual_effects,aes(x=Cohort,y=MED))+
 )
 CoefPlot_subset
 
+#Save as figure
 ggsave(file="./RevisedFigures/Coef_By_Cohort.svg", plot=CoefPlot_subset, width=14, height=12)
 ggsave(file="./RevisedFigures/Coef_By_Cohort.png", plot=CoefPlot_subset, width=14, height=12)

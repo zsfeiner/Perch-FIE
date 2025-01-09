@@ -1,7 +1,7 @@
 library(dplyr)
 
 #Read Data
-TP <- read.csv("SouthernLM_TP.csv")
+TP <- read.csv("./Data/SouthernLM_TP.csv")
 
 mean_TP_byYear = TP %>%
   rename(Year=YEAR) %>%

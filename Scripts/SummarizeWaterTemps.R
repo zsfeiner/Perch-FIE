@@ -1,6 +1,10 @@
+##This code will summarize water temperatures from the St Joseph power plant into a number of possible 
+#thermal metrics to use in modeling
+#-ZF Feiner, 1/9/2025
+
 library(tidyverse)
 
-temps <- read_csv("StJoeTemps_1960_2018.csv")
+temps <- read_csv("./Data/StJoeTemps_1960_2018.csv")
 temps
 
 

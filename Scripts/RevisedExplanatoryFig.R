@@ -1,3 +1,7 @@
+#This code will take TP, temperature, and biotic perch data and plot their trends over time
+#and among cohorts to create supplemental figures in Feiner et al. 2025, Evol Appl
+#-ZS Feiner, 1/9/2025
+
 #TP and temp Summary
 library(dplyr)
 library(ggplot2)
@@ -6,7 +10,7 @@ library(tidyverse)
 
 ###Abiotic variables
 #Read Data
-TP <- read.csv("SouthernLM_TP.csv")
+TP <- read.csv("./Data/SouthernLM_TP.csv")
 
 TP_Year = TP %>%
   rename(Year=YEAR) %>%
@@ -16,7 +20,7 @@ TP_Year = TP %>%
 
 
 
-temps <- read_csv("StJoeTemps_1960_2018.csv")
+temps <- read_csv("./Data/StJoeTemps_1960_2018.csv")
 
 ##Summarize a few different ways on annual basis
 
@@ -37,7 +41,7 @@ abiotic_graph <- left_join(GDD, TP_Year)
 abiotic_graph
 
 #Biotic variables
-female_yep <- read.csv("female_yep.csv", 
+female_yep <- read.csv("./Data/female_yep.csv", 
                        colClasses=c("integer","character","integer","integer","character","character","integer","integer","integer","integer"))
 
 #assign cohort year
@@ -105,6 +109,7 @@ Predictors_fig <- ggplot(fig_graph_Data, aes(x=YEAR, y=value)) +
 
 Predictors_fig
 
+#Save figure of predictors over time
 ggsave(file="./Figures/RevisedPredictors_Fig.svg", plot=Predictors_fig, width=12, height=10)
 ggsave(file="./Figures/RevisedPredictors_Fig.png", plot=Predictors_fig, width=12, height=10)
 
@@ -124,6 +129,7 @@ GDDcohortsplot <- ggplot(cohortsummary, aes(x=YEAR, y=GDD5Annual, color=CohortYe
   scale_color_continuous(name="Cohort")
 GDDcohortsplot
 
+#Save supplemental figure
 ggsave(file="./Figures/Revised_Supplement_GDDbyCohort_Fig.png", plot=GDDcohortsplot, width=12, height=10)
 
 TPCohortsplot <- ggplot(cohortsummary, aes(x=YEAR, y=MeanTP, color=CohortYear)) + 
@@ -131,6 +137,8 @@ TPCohortsplot <- ggplot(cohortsummary, aes(x=YEAR, y=MeanTP, color=CohortYear)) 
   facet_wrap(~CohortYear) + theme_bw() + xlab("Year") + ylab(expression(Mean~TP~"("*mu*"g/L)")) +
   scale_color_continuous(name="Cohort")
 TPCohortsplot
+
+#save supplemental figure
 ggsave(file="./Figures/Revised_Supplement_TPbyCohort_Fig.png", plot=TPCohortsplot, width=12, height=10)
 
 
